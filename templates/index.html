@@ -209,7 +209,9 @@
           <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: #334155; font-weight: 500;">
             <input id="toggleWeather" type="checkbox"> <span>🌧️ Radar Hujan (OpenWeatherMap)</span>
           </label>
+          {% if not owm_api_key %}
           <input type="text" id="owmApiKey" placeholder="API Key OpenWeatherMap" style="font-size: 11px; padding: 4px; border: 1px solid #cbd5e1; border-radius: 4px; box-sizing: border-box; margin-left: 20px; width: calc(100% - 20px);">
+          {% endif %}
         </div>
         <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: #334155; font-weight: 500;">
           <input id="toggleHeatmap" type="checkbox"> <span>🔥 Peta Kepadatan (Heatmap)</span>
@@ -784,19 +786,23 @@
     }
 
     // Event Listeners
+    const injectedApiKey = "{{ owm_api_key }}";
     const owmApiKeyInput = document.getElementById("owmApiKey");
-    const savedKey = localStorage.getItem("owmApiKey");
-    if(savedKey) {
-      owmApiKeyInput.value = savedKey;
+    
+    if (owmApiKeyInput) {
+      const savedKey = localStorage.getItem("owmApiKey");
+      if(savedKey) {
+        owmApiKeyInput.value = savedKey;
+      }
+      owmApiKeyInput.addEventListener("input", (e) => {
+        localStorage.setItem("owmApiKey", e.target.value);
+      });
     }
-    owmApiKeyInput.addEventListener("input", (e) => {
-      localStorage.setItem("owmApiKey", e.target.value);
-    });
 
     let weatherLayer = null;
     toggleWeather.addEventListener("change", () => {
       if (toggleWeather.checked) {
-        const apiKey = owmApiKeyInput.value.trim();
+        const apiKey = injectedApiKey || (owmApiKeyInput ? owmApiKeyInput.value.trim() : "");
         if (!apiKey) {
           alert("Silakan masukkan API Key OpenWeatherMap terlebih dahulu!");
           toggleWeather.checked = false;

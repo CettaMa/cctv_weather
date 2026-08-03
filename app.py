@@ -97,7 +97,8 @@ t.start()
 @app.route("/")
 def index():
     marker_json = json.dumps(markers_global, ensure_ascii=False)
-    return render_template("index.html", marker_json=marker_json, marker_count=len(markers_global))
+    owm_api_key = os.environ.get("OWM_API_KEY", "")
+    return render_template("index.html", marker_json=marker_json, marker_count=len(markers_global), owm_api_key=owm_api_key)
 
 @app.route("/api/status")
 def api_status():
