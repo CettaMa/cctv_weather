@@ -1,0 +1,27 @@
+CCTV_Name,Location,Provider,m3u8_URL,Sample_Downloaded,Sample_File,Sample_Size_Bytes,Sample_Error,Validated_At_UTC
+VID GEDEBAGE BARAT,"-6.93665,107.69195",ATCS-DISHUB,rtsp://atcs-dishub.bandung.go.id:9104/Streaming/Channels/601,NO,,,RTSP stream (channel 601),2026-11-23T13:00:00+00:00
+VID GEDEBAGE SELATAN,"-6.93680,107.69211",ATCS-DISHUB,rtsp://atcs-dishub.bandung.go.id:9104/Streaming/Channels/701,NO,,,RTSP stream (channel 701),2026-11-23T13:00:00+00:00
+VID GEDEBAGE UTARA,"-6.93650,107.69211",ATCS-DISHUB,rtsp://atcs-dishub.bandung.go.id:9104/Streaming/Channels/801,NO,,,RTSP stream (channel 801),2026-11-23T13:00:00+00:00
+VID SAMSAT TIMUR,"-6.94543,107.64203",ATCS-DISHUB,rtsp://atcs-dishub.bandung.go.id:9104/Streaming/Channels/901,NO,,,RTSP stream (channel 901),2026-11-23T13:00:00+00:00
+VID SAMSAT BARAT,"-6.94543,107.64173",ATCS-DISHUB,rtsp://atcs-dishub.bandung.go.id:9104/Streaming/Channels/1001,NO,,,RTSP stream (channel 1001),2026-11-23T13:00:00+00:00
+VID SAMSAT SELATAN,"-6.94558,107.64188",ATCS-DISHUB,rtsp://atcs-dishub.bandung.go.id:9104/Streaming/Channels/1101,NO,,,RTSP stream (channel 1101),2026-11-23T13:00:00+00:00
+VID SAMSAT UTARA,"-6.94528,107.64188",ATCS-DISHUB,rtsp://atcs-dishub.bandung.go.id:9104/Streaming/Channels/1201,NO,,,RTSP stream (channel 1201),2026-11-23T13:00:00+00:00
+VID BUAHBATU TIMUR,"-6.94801,107.63367",ATCS-DISHUB,rtsp://atcs-dishub.bandung.go.id:9104/Streaming/Channels/1301,NO,,,RTSP stream (channel 1301),2026-11-23T13:00:00+00:00
+VID BUAH BATU SELATAN,"-6.94816,107.63352",ATCS-DISHUB,rtsp://atcs-dishub.bandung.go.id:9104/Streaming/Channels/1401,NO,,,RTSP stream (channel 1401),2026-11-23T13:00:00+00:00
+VID BUAH BATU BARAT,"-6.94801,107.63337",ATCS-DISHUB,rtsp://atcs-dishub.bandung.go.id:9104/Streaming/Channels/1501,NO,,,RTSP stream (channel 1501),2026-11-23T13:00:00+00:00
+VID BUAH BATU UTARA,"-6.94786,107.63352",ATCS-DISHUB,rtsp://atcs-dishub.bandung.go.id:9104/Streaming/Channels/1601,NO,,,RTSP stream (channel 1601),2026-11-23T13:00:00+00:00
+VID BATUNUNGGAL TIMUR,"-6.94949,107.62616",ATCS-DISHUB,rtsp://atcs-dishub.bandung.go.id:9104/Streaming/Channels/1701,NO,,,RTSP stream (channel 1701),2026-11-23T13:00:00+00:00
+VID BATUNUNGGAL BARAT,"-6.94949,107.62586",ATCS-DISHUB,rtsp://atcs-dishub.bandung.go.id:9104/Streaming/Channels/1801,NO,,,RTSP stream (channel 1801),2026-11-23T13:00:00+00:00
+VID M.TOHA BARAT,"-6.94834,107.60924",ATCS-DISHUB,rtsp://atcs-dishub.bandung.go.id:9104/Streaming/Channels/1901,NO,,,RTSP stream (channel 1901),2026-11-23T13:00:00+00:00
+VID M TOHA SELATAN,"-6.94849,107.60939",ATCS-DISHUB,rtsp://atcs-dishub.bandung.go.id:9104/Streaming/Channels/2001,NO,,,RTSP stream (channel 2001),2026-11-23T13:00:00+00:00
+VID M TOHA UTARA,"-6.94819,107.60939",ATCS-DISHUB,rtsp://atcs-dishub.bandung.go.id:9104/Streaming/Channels/2101,NO,,,RTSP stream (channel 2101),2026-11-23T13:00:00+00:00
+VID M TOHA TIMUR,"-6.94834,107.60954",ATCS-DISHUB,rtsp://atcs-dishub.bandung.go.id:9104/Streaming/Channels/2201,NO,,,RTSP stream (channel 2201),2026-11-23T13:00:00+00:00
+CIBIRU IN,"-6.93245,107.71745",ATCS-DISHUB,rtsp://atcs-dishub.bandung.go.id:9104/Streaming/Channels/2901,NO,,,RTSP stream (channel 2901),2026-11-23T13:00:00+00:00
+DPRD KOTA BANDUNG,"-6.91540,107.63320",ATCS-DISHUB,rtsp://atcs-dishub.bandung.go.id:9104/Streaming/Channels/3001,NO,,,RTSP stream (channel 3001),2026-11-23T13:00:00+00:00
+GEGER KALONGHILIR,"-6.86750,107.58800",ATCS-DISHUB,rtsp://atcs-dishub.bandung.go.id:9104/Streaming/Channels/3101,NO,,,RTSP stream (channel 3101),2026-11-23T13:00:00+00:00
+HKBP IN,"-6.91458,107.63551",ATCS-DISHUB,rtsp://atcs-dishub.bandung.go.id:9104/Streaming/Channels/3401,NO,,,RTSP stream (channel 3401),2026-11-23T13:00:00+00:00
+KOPOOUT,"-6.94681,107.59424",ATCS-DISHUB,rtsp://atcs-dishub.bandung.go.id:9104/Streaming/Channels/3501,NO,,,RTSP stream (channel 3501),2026-11-23T13:00:00+00:00
+CIBIRU OUT,"-6.93260,107.71775",ATCS-DISHUB,rtsp://atcs-dishub.bandung.go.id:9104/Streaming/Channels/3701,NO,,,RTSP stream (channel 3701),2026-11-23T13:00:00+00:00
+CIKADUT PTZ,"-6.90420,107.66694",ATCS-DISHUB,rtsp://atcs-dishub.bandung.go.id:9104/Streaming/Channels/3801,NO,,,RTSP stream (channel 3801),2026-11-23T13:00:00+00:00
+TERM. LEDENG,"-6.85895,107.59491",ATCS-DISHUB,rtsp://atcs-dishub.bandung.go.id:9104/Streaming/Channels/3901,NO,,,RTSP stream (channel 3901),2026-11-23T13:00:00+00:00
+GANDOK OUT,"-6.88392,107.60519",ATCS-DISHUB,rtsp://atcs-dishub.bandung.go.id:9104/Streaming/Channels/4001,NO,,,RTSP stream (channel 4001),2026-11-23T13:00:00+00:00

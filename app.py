@@ -1,5 +1,6 @@
 import os
 import json
+import socket
 import threading
 import time
 import urllib.request
@@ -7,6 +8,10 @@ import urllib.parse
 import urllib.error
 import csv
 import requests
+try:
+    import cv2
+except ImportError:
+    cv2 = None
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from pathlib import Path
@@ -22,6 +27,25 @@ app = Flask(__name__)
 # Paths & Data Files
 # ==========================================
 CSV_PATH = Path("csv/cctv_bandung_data_validated.csv")
+CSV_RTSP_PATH = Path("csv/cctv_rtsp_telkom.csv")
+RTSP_URL_BY_ID = {}
+
+
+def _load_dotenv_if_present(dotenv_path: Path = Path(".env")) -> None:
+    """Populate os.environ from a local .env file without overriding existing env vars."""
+    if not dotenv_path.exists():
+        return
+    for raw_line in dotenv_path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, val = line.split("=", 1)
+        os.environ.setdefault(key.strip(), val.strip().strip('"').strip("'"))
+
+
+_load_dotenv_if_present()
+RTSP_USER = os.environ.get("RTSP_USER", "").strip()
+RTSP_PASS = os.environ.get("RTSP_PASS", "").strip()
 CSV_PEREMPATAN_DETAIL_PATH = Path("csv/cctv_perempatan_detail.csv")
 CSV_PERSIMPANGAN_DETAIL_PATH = Path("csv/cctv_semua_persimpangan_detail.csv")
 CSV_CLUSTERS_PATH = Path("csv/cctv_perempatan_clusters.csv")
@@ -291,7 +315,11 @@ def load_markers(rows: list[dict] | None = None):
         with CSV_PATH.open("r", newline="", encoding="utf-8-sig") as handle:
             row_iterable = list(csv.DictReader(handle))
     else:
-        row_iterable = rows
+        row_iterable = list(rows)
+
+    if CSV_RTSP_PATH.exists():
+        with CSV_RTSP_PATH.open("r", newline="", encoding="utf-8-sig") as handle:
+            row_iterable.extend(csv.DictReader(handle))
     # Load intersection lookup dictionaries
     persimpangan_map = {}
     if CSV_PERSIMPANGAN_DETAIL_PATH.exists():
@@ -324,23 +352,41 @@ def load_markers(rows: list[dict] | None = None):
             cctv_id = os.path.splitext(sample_file_name or name.lower().replace(" ", "_"))[0]
 
             raw_stream = row.get("m3u8_URL", "").strip()
-            # Normalize pelindung URL with port 3443
-            if raw_stream.startswith("https://pelindung.bandung.go.id/video/"):
-                normalized_stream = raw_stream.replace(
-                    "https://pelindung.bandung.go.id/video/",
-                    "https://pelindung.bandung.go.id:3443/video/"
-                )
-            else:
-                normalized_stream = raw_stream
+            is_rtsp = raw_stream.lower().startswith("rtsp://")
+            stream_type = "rtsp" if is_rtsp else "hls"
 
-            # Compute internal proxy URL
-            if "/video/" in normalized_stream:
-                subpath = normalized_stream.split("/video/", 1)[1]
-                proxy_stream = f"/api/stream/{subpath}"
-            elif normalized_stream:
-                proxy_stream = f"/api/proxy_stream?url={urllib.parse.quote(normalized_stream, safe='')}"
+            if is_rtsp:
+                parsed_rtsp = urllib.parse.urlparse(raw_stream)
+                host_port = parsed_rtsp.hostname or ""
+                if parsed_rtsp.port:
+                    host_port = f"{host_port}:{parsed_rtsp.port}"
+                if parsed_rtsp.username:
+                    RTSP_URL_BY_ID[cctv_id] = raw_stream
+                elif RTSP_USER and RTSP_PASS:
+                    auth = f"{urllib.parse.quote(RTSP_USER, safe='')}:{urllib.parse.quote(RTSP_PASS, safe='')}@"
+                    RTSP_URL_BY_ID[cctv_id] = f"rtsp://{auth}{host_port}{parsed_rtsp.path}"
+                else:
+                    RTSP_URL_BY_ID[cctv_id] = raw_stream
+                normalized_stream = f"rtsp://{host_port}{parsed_rtsp.path}"
+                proxy_stream = f"/api/rtsp_mjpeg?id={urllib.parse.quote(cctv_id, safe='')}"
             else:
-                proxy_stream = ""
+                # Normalize pelindung URL with port 3443
+                if raw_stream.startswith("https://pelindung.bandung.go.id/video/"):
+                    normalized_stream = raw_stream.replace(
+                        "https://pelindung.bandung.go.id/video/",
+                        "https://pelindung.bandung.go.id:3443/video/"
+                    )
+                else:
+                    normalized_stream = raw_stream
+
+                # Compute internal proxy URL
+                if "/video/" in normalized_stream:
+                    subpath = normalized_stream.split("/video/", 1)[1]
+                    proxy_stream = f"/api/stream/{subpath}"
+                elif normalized_stream:
+                    proxy_stream = f"/api/proxy_stream?url={urllib.parse.quote(normalized_stream, safe='')}"
+                else:
+                    proxy_stream = ""
 
             # Intersection associations
             isect_all = persimpangan_map.get(name, {})
@@ -402,6 +448,8 @@ def load_markers(rows: list[dict] | None = None):
                 "provider": row.get("Provider", "").strip(),
                 "stream": normalized_stream,
                 "proxyStream": proxy_stream,
+                "isRtsp": is_rtsp,
+                "streamType": stream_type,
                 "sampleDownloaded": row.get("Sample_Downloaded", "").strip(),
                 "sampleFile": row.get("Sample_File", "").strip(),
                 "sampleError": row.get("Sample_Error", "").strip(),
@@ -442,11 +490,27 @@ def load_markers(rows: list[dict] | None = None):
 # Asynchronous Camera Health Checker
 # ==========================================
 def check_single_cctv(marker_item):
-    """Probes a single CCTV playlist with a fast, non-retrying HEAD; body is never fetched."""
+    """Probes a single CCTV playlist (HTTP HEAD) or RTSP endpoint (TCP/OPTIONS)."""
     name = marker_item.get("name")
     url = marker_item.get("stream")
     if not url:
         return name, "NO"
+    if marker_item.get("isRtsp") or url.lower().startswith("rtsp://"):
+        rtsp_url = RTSP_URL_BY_ID.get(marker_item.get("cctvId", ""), url)
+        parsed = urllib.parse.urlparse(rtsp_url)
+        host = parsed.hostname
+        port = parsed.port or 554
+        if not host:
+            return name, "NO"
+        try:
+            with socket.create_connection((host, port), timeout=3.5) as sock:
+                sock.settimeout(3.5)
+                req = f"OPTIONS {rtsp_url} RTSP/1.0\r\nCSeq: 1\r\n\r\n".encode("ascii", errors="ignore")
+                sock.sendall(req)
+                resp = sock.recv(256).decode("ascii", errors="ignore")
+                return name, "YES" if "RTSP/1.0" in resp else "NO"
+        except OSError:
+            return name, "NO"
     try:
         res = HEALTH_SESSION.head(url, timeout=(3.5, 5.0), allow_redirects=True)
         return name, "YES" if res.status_code == 200 else "NO"
@@ -1065,6 +1129,58 @@ def proxy_generic_stream():
 
     headers["Content-Type"] = res.headers.get("Content-Type", "application/octet-stream")
     return Response(res.content, status=200, headers=headers)
+
+
+@app.route("/api/rtsp_mjpeg")
+def proxy_rtsp_mjpeg():
+    """Stream an RTSP camera as multipart MJPEG using OpenCV so browsers can render it."""
+    if cv2 is None:
+        return Response("OpenCV tidak tersedia untuk streaming RTSP", status=503, headers=CORS_HEADERS)
+
+    cctv_id = request.args.get("id", "").strip()
+    rtsp_url = RTSP_URL_BY_ID.get(cctv_id)
+    if not rtsp_url:
+        return Response("Kamera RTSP tidak ditemukan", status=404, headers=CORS_HEADERS)
+
+    def generate_frames():
+        cap = cv2.VideoCapture(rtsp_url, cv2.CAP_FFMPEG)
+        cap.set(cv2.CAP_PROP_BUFFERSIZE, 2)
+        try:
+            if not cap.isOpened():
+                return
+            consecutive_failures = 0
+            while True:
+                ok, frame = cap.read()
+                if not ok or frame is None:
+                    consecutive_failures += 1
+                    if consecutive_failures > 15:
+                        break
+                    time.sleep(0.05)
+                    continue
+                consecutive_failures = 0
+                encoded_ok, jpg = cv2.imencode(".jpg", frame, [int(cv2.IMWRITE_JPEG_QUALITY), 75])
+                if not encoded_ok:
+                    continue
+                payload = jpg.tobytes()
+                yield (
+                    b"--frame\r\n"
+                    b"Content-Type: image/jpeg\r\n"
+                    b"Content-Length: " + str(len(payload)).encode("ascii") + b"\r\n\r\n"
+                    + payload + b"\r\n"
+                )
+        finally:
+            cap.release()
+
+    headers = {
+        **CORS_HEADERS,
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Pragma": "no-cache",
+    }
+    return Response(
+        generate_frames(),
+        mimetype="multipart/x-mixed-replace; boundary=frame",
+        headers=headers,
+    )
 
 
 if __name__ == "__main__":

@@ -1203,6 +1203,7 @@
           <button class="preset-chip" data-preset="DAGO">Dago</button>
           <button class="preset-chip" data-preset="ALUN">Alun-Alun</button>
           <button class="preset-chip" data-preset="BATAS">Batas Kota</button>
+          <button class="preset-chip" data-preset="RTSP_TELKOM" data-toggle="true" aria-pressed="false">RTSP Telkom (26)</button>
         </div>
 
         <div style="display: flex; gap: 8px;">
@@ -1759,9 +1760,13 @@
       const roiEncodedData = hasRois ? encodeURIComponent(JSON.stringify(item.rois)) : "";
 
       const isKnownOffline = item.sampleDownloaded !== 'YES';
+      const isRtspStream = item.isRtsp === true || item.streamType === 'rtsp';
+      const playerElementHtml = isRtspStream
+        ? `<img class="cctv-live-mjpeg" data-stream="${streamSrc}" data-cctv-id="${item.cctvId || ''}" data-rois="${roiEncodedData}" data-autoplay="${isKnownOffline ? '0' : '1'}" alt="Live RTSP ${item.name}" style="width: 100%; height: auto; max-height: 180px; display: block; object-fit: contain;" />`
+        : `<video class="cctv-live-player" data-stream="${streamSrc}" data-cctv-id="${item.cctvId || ''}" data-rois="${roiEncodedData}" data-autoplay="${isKnownOffline ? '0' : '1'}" controls muted playsinline style="width: 100%; height: auto; max-height: 180px; display: block;"></video>`;
       const liveVideoPlayer = streamSrc
-        ? `<div class="live-video-container" style="margin-top: 8px; border-radius: var(--radius-sm); overflow: hidden; background: #000000; position: relative;">
-             <video class="cctv-live-player" data-stream="${streamSrc}" data-cctv-id="${item.cctvId || ''}" data-rois="${roiEncodedData}" data-autoplay="${isKnownOffline ? '0' : '1'}" controls muted playsinline style="width: 100%; height: auto; max-height: 180px; display: block;"></video>
+        ? `<div class="live-video-container" style="margin-top: 8px; border-radius: var(--radius-sm); overflow: hidden; background: #000000; position: relative; min-height: 120px;">
+             ${playerElementHtml}
              <canvas class="roi-overlay-canvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: none; z-index: 5;"></canvas>
              <div class="weather-cls-badge" style="display: none;"></div>
              ${isKnownOffline ? `<div class="cctv-offline-placeholder" style="position:absolute; top:0; left:0; right:0; bottom:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; background:rgba(0,0,0,0.85); color:#cbd5e1; font-size:12px; text-align:center; padding:10px; z-index:6;">
@@ -2259,6 +2264,8 @@
       });
     }
 
+    let isRtspFilterActive = false;
+
     // Render Markers dengan Flag shouldAutoZoom
     function renderMarkers(shouldAutoZoom = false) {
       const query = searchBox.value.trim().toLowerCase();
@@ -2286,6 +2293,7 @@
         const matchesProv = prov === "ALL" || (item.provider || "DISKOMINFO") === prov;
         const matchesArea = areaVal === "ALL" || item._parsedArea === areaVal;
         const matchesCardinal = cardinalVal === "ALL" || (item.cardinal || "") === cardinalVal;
+        const matchesRtsp = !isRtspFilterActive || item.isRtsp === true;
         
         let matchesRoi = true;
         if (roiFilterVal === "WITH_ROI") {
@@ -2303,7 +2311,7 @@
           matchesIsect = item.within100m !== true;
         }
 
-        if (!matchesQuery || !matchesStatus || !matchesProv || !matchesArea || !matchesIsect || !matchesCardinal || !matchesRoi) return;
+        if (!matchesQuery || !matchesStatus || !matchesProv || !matchesArea || !matchesIsect || !matchesCardinal || !matchesRoi || !matchesRtsp) return;
 
         filtered.push(item);
         bounds.push([item.lat, item.lng]);
@@ -2564,14 +2572,44 @@
     if (togglePerspectives) togglePerspectives.addEventListener("change", () => renderMarkers(false));
 
     // Preset Corridor Chips Click Handler
-    const presetButtons = document.querySelectorAll(".preset-chip");
+    const presetButtons = document.querySelectorAll(".preset-chip[data-preset]");
     presetButtons.forEach(btn => {
       btn.addEventListener("click", () => {
-        presetButtons.forEach(b => b.classList.remove("active"));
-        btn.classList.add("active");
-        
         const preset = btn.getAttribute("data-preset");
+        if (preset === "RTSP_TELKOM") {
+          isRtspFilterActive = !isRtspFilterActive;
+          btn.classList.toggle("active", isRtspFilterActive);
+          btn.setAttribute("aria-pressed", isRtspFilterActive ? "true" : "false");
+          if (isRtspFilterActive) {
+            const allBtn = document.querySelector('.preset-chip[data-preset="ALL"]');
+            if (allBtn) allBtn.classList.remove("active");
+          } else {
+            const anyCorridorActive = Array.from(presetButtons).some(
+              b => b.getAttribute("data-preset") !== "RTSP_TELKOM" && b.classList.contains("active")
+            );
+            if (!anyCorridorActive) {
+              const allBtn = document.querySelector('.preset-chip[data-preset="ALL"]');
+              if (allBtn) allBtn.classList.add("active");
+            }
+          }
+          renderMarkers(true);
+          return;
+        }
+
+        presetButtons.forEach(b => {
+          if (b.getAttribute("data-preset") !== "RTSP_TELKOM") {
+            b.classList.remove("active");
+          }
+        });
+        btn.classList.add("active");
+
         if (preset === "ALL") {
+          isRtspFilterActive = false;
+          const rtspBtn = document.querySelector('.preset-chip[data-preset="RTSP_TELKOM"]');
+          if (rtspBtn) {
+            rtspBtn.classList.remove("active");
+            rtspBtn.setAttribute("aria-pressed", "false");
+          }
           searchBox.value = "";
           sampleFilter.value = "ALL";
           providerFilter.value = "ALL";
@@ -2625,7 +2663,11 @@
         toggleTemperature.checked = false;
         renderTemperatureHeatmap();
       }
-      presetButtons.forEach(b => b.classList.remove("active"));
+      isRtspFilterActive = false;
+      presetButtons.forEach(b => {
+        b.classList.remove("active");
+        if (b.hasAttribute("aria-pressed")) b.setAttribute("aria-pressed", "false");
+      });
       const allBtn = document.querySelector('.preset-chip[data-preset="ALL"]');
       if (allBtn) allBtn.classList.add("active");
       renderMarkers(true);
@@ -3351,6 +3393,49 @@
       };
     }
 
+    function initMjpegPlayer(imgElem, streamUrl) {
+      if (!imgElem || !streamUrl) return;
+      const container = imgElem.parentElement;
+      const existingError = container.querySelector('.hls-error');
+      if (existingError) existingError.remove();
+      const existingLoading = container.querySelector('.hls-loading');
+      if (existingLoading) existingLoading.remove();
+
+      const loadingDiv = document.createElement('div');
+      loadingDiv.className = 'hls-loading';
+      loadingDiv.style.cssText = 'position:absolute; top:0; left:0; right:0; bottom:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.85); color:#cbd5e1; font-size:12px; text-align:center; padding:10px; z-index:10; font-weight:600;';
+      loadingDiv.textContent = 'Menghubungkan ke stream RTSP…';
+      container.appendChild(loadingDiv);
+
+      const clearLoading = () => {
+        const el = container.querySelector('.hls-loading');
+        if (el) el.remove();
+      };
+
+      imgElem.onload = () => clearLoading();
+      imgElem.onerror = () => {
+        clearLoading();
+        if (container.querySelector('.hls-error')) return;
+        const errDiv = document.createElement('div');
+        errDiv.className = 'hls-error';
+        errDiv.style.cssText = 'position:absolute; top:0; left:0; right:0; bottom:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.85); color:#f87171; font-size:13px; text-align:center; padding:10px; z-index:10; font-weight:600; flex-direction:column; gap:6px;';
+        errDiv.innerHTML = `
+          <span>Stream RTSP tidak merespons</span>
+          <span style="font-size:11px; color:#94a3b8; font-weight:400;">Kamera mungkin sedang offline atau timeout</span>
+          <button type="button" class="retry-stream-btn inline-action-btn" style="margin-top:2px;">Coba Lagi</button>
+        `;
+        container.appendChild(errDiv);
+        const retryBtn = errDiv.querySelector('.retry-stream-btn');
+        if (retryBtn) {
+          retryBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            initMjpegPlayer(imgElem, streamUrl);
+          });
+        }
+      };
+      imgElem.src = `${streamUrl}${streamUrl.includes('?') ? '&' : '?'}t=${Date.now()}`;
+    }
+
     function initLivePlayer(videoElem, streamUrl) {
       if (!videoElem || !streamUrl) return;
       const container = videoElem.parentElement;
@@ -3610,30 +3695,39 @@
       if (!popupNode) return;
       
       const videoElem = popupNode.querySelector('video.cctv-live-player');
+      const mjpegElem = popupNode.querySelector('img.cctv-live-mjpeg');
+      const mediaElem = videoElem || mjpegElem;
       const canvasElem = popupNode.querySelector('canvas.roi-overlay-canvas');
       const roiBtn = popupNode.querySelector('.toggle-roi-btn');
 
-      if (videoElem) {
-        const streamUrl = videoElem.getAttribute('data-stream');
+      if (mediaElem) {
+        const streamUrl = mediaElem.getAttribute('data-stream');
         const tryPlayBtn = popupNode.querySelector('.try-play-stream-btn');
         const weatherBadge = popupNode.querySelector('.weather-cls-badge');
-        if (weatherBadge) {
+        const startPlayer = () => {
+          if (mjpegElem) {
+            initMjpegPlayer(mjpegElem, streamUrl);
+          } else {
+            initLivePlayer(videoElem, streamUrl);
+          }
+        };
+        if (weatherBadge && videoElem) {
           startWeatherClassification(videoElem, weatherBadge);
         }
-        if (videoElem.getAttribute('data-autoplay') !== '0') {
-          initLivePlayer(videoElem, streamUrl);
+        if (mediaElem.getAttribute('data-autoplay') !== '0') {
+          startPlayer();
         } else if (tryPlayBtn) {
           tryPlayBtn.addEventListener('click', (ev) => {
             ev.stopPropagation();
             const placeholder = popupNode.querySelector('.cctv-offline-placeholder');
             if (placeholder) placeholder.remove();
-            videoElem.setAttribute('data-autoplay', '1');
-            initLivePlayer(videoElem, streamUrl);
+            mediaElem.setAttribute('data-autoplay', '1');
+            startPlayer();
           });
         }
 
         if (roiBtn && canvasElem) {
-          const rawRois = videoElem.getAttribute('data-rois');
+          const rawRois = mediaElem.getAttribute('data-rois');
           let rois = [];
           try {
             if (rawRois) rois = JSON.parse(decodeURIComponent(rawRois));
@@ -3655,8 +3749,12 @@
       }
     });
 
-    map.on('popupclose', function() {
+    map.on('popupclose', function(e) {
       stopWeatherClassification();
+      if (e.popup && e.popup._contentNode) {
+        const mjpeg = e.popup._contentNode.querySelector('img.cctv-live-mjpeg');
+        if (mjpeg) mjpeg.src = '';
+      }
       if (currentHls) {
         currentHls.destroy();
         currentHls = null;
@@ -3693,6 +3791,9 @@
         try { h.destroy(); } catch(e) {}
       });
       wallHlsInstances = [];
+      if (cctvWallGridContainer) {
+        cctvWallGridContainer.querySelectorAll('img.wall-video').forEach(img => { img.src = ''; });
+      }
     }
 
     async function loadCorridorCctvWall() {
@@ -3726,6 +3827,7 @@
             const los = cam.levelOfService || {};
             const speedText = cam.avgSpeedKmh ? `${cam.avgSpeedKmh} km/h (LOS ${los.code || 'B'})` : 'Online';
 
+            const isCamRtsp = cam.isRtsp === true || cam.streamType === 'rtsp';
             const card = document.createElement('div');
             card.className = 'cctv-wall-card';
             card.innerHTML = `
@@ -3734,7 +3836,9 @@
                 <span style="color:${los.color || 'var(--success)'}; font-size:10px; font-weight:700;">● ${speedText}</span>
               </header>
               <div class="video-wrap">
-                <video class="wall-video" muted autoplay playsinline></video>
+                ${isCamRtsp
+                  ? `<img class="wall-video" alt="${cam.name}" style="width:100%; height:100%; object-fit:contain; display:block;" />`
+                  : `<video class="wall-video" muted autoplay playsinline></video>`}
               </div>
               <footer>
                 <span>${cam.intersectionName || cam.perempatanName || 'Ruas Jalan'}</span>
@@ -3744,7 +3848,7 @@
 
             cctvWallGridContainer.appendChild(card);
             const videoWrap = card.querySelector('.video-wrap');
-            const videoElem = card.querySelector('video.wall-video');
+            const videoElem = card.querySelector('.wall-video');
 
             card.querySelector('.jump-from-wall-btn').addEventListener('click', () => {
               cctvWallModal.classList.remove('open');
@@ -3752,7 +3856,14 @@
               map.flyTo([cam.lat, cam.lng], 17, { duration: 0.8 });
             });
 
-            if (Hls.isSupported() && streamSrc) {
+            if (isCamRtsp && streamSrc) {
+              videoElem.onerror = () => {
+                if (videoWrap) {
+                  videoWrap.innerHTML = '<div style="display:flex; align-items:center; justify-content:center; height:100%; color:#94a3b8; font-size:11px; text-align:center; padding:8px;">Kamera RTSP tidak tersedia</div>';
+                }
+              };
+              videoElem.src = `${streamSrc}${streamSrc.includes('?') ? '&' : '?'}t=${Date.now()}`;
+            } else if (Hls.isSupported() && streamSrc) {
               const timerId = setTimeout(() => {
                 const hls = new Hls(buildHlsConfig());
                 hls.loadSource(streamSrc);

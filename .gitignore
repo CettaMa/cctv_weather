@@ -13,6 +13,10 @@ graphify-out/
 .pytest_cache/
 .impeccable/
 
+# Environment & raw RTSP spreadsheet (may contain credentials)
+.env
+RTSP VID - Telkom University.xlsx
+
 # Large video clips, training datasets, and intermediate frames
 outputs/cctv_clips/
 weather/dataset/
