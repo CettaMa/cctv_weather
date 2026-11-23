@@ -1,0 +1,1085 @@
+#!/usr/bin/env python3
+"""
+Create an interactive HTML map from the Bandung CCTV CSV.
+
+Run:
+    python create_cctv_map.py
+
+Output:
+    cctv_bandung_map.html
+
+The generated map uses Leaflet and CARTO basemap tiles from public CDNs, so the
+HTML file needs internet access when opened in a browser.
+"""
+
+from __future__ import annotations
+
+import argparse
+import csv
+import html
+import json
+import threading
+import time
+import urllib.request
+from pathlib import Path
+from http.server import HTTPServer, SimpleHTTPRequestHandler
+
+
+DEFAULT_INPUT = Path("../csv/cctv_bandung_data_validated.csv")
+DEFAULT_OUTPUT = Path("../cctv_bandung_map.html")
+
+
+def parse_location(value: str) -> tuple[float, float] | None:
+    parts = [part.strip() for part in (value or "").split(",")]
+    if len(parts) != 2:
+        return None
+    try:
+        lat = float(parts[0])
+        lng = float(parts[1])
+    except ValueError:
+        return None
+    if not (-90 <= lat <= 90 and -180 <= lng <= 180):
+        return None
+    return lat, lng
+
+
+def load_markers(csv_path: Path) -> list[dict]:
+    markers: list[dict] = []
+    with csv_path.open("r", newline="", encoding="utf-8-sig") as handle:
+        reader = csv.DictReader(handle)
+        for row in reader:
+            point = parse_location(row.get("Location", ""))
+            if point is None:
+                continue
+            lat, lng = point
+            markers.append(
+                {
+                    "name": row.get("CCTV_Name", "").strip(),
+                    "lat": lat,
+                    "lng": lng,
+                    "provider": row.get("Provider", "").strip(),
+                    "stream": row.get("m3u8_URL", "").strip(),
+                    "sampleDownloaded": row.get("Sample_Downloaded", "").strip(),
+                    "sampleFile": row.get("Sample_File", "").strip(),
+                    "sampleError": row.get("Sample_Error", "").strip(),
+                }
+            )
+    return markers
+
+
+def render_html(markers: list[dict]) -> str:
+    marker_json = json.dumps(markers, ensure_ascii=False)
+    marker_count = len(markers)
+    escaped_title = html.escape(f"Bandung CCTV Map & Spatial Analytics ({marker_count} cameras)")
+
+    return f"""<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{escaped_title}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <style>
+    .leaflet-popup-content-wrapper {{
+      background: #ffffff;
+      border-radius: 8px;
+      box-shadow: 0 3px 14px rgba(0, 0, 0, 0.25);
+    }}
+    .leaflet-popup-content {{
+      text-align: left;
+      line-height: 1.4;
+    }}
+    html, body, #map {{
+      height: 100%;
+      margin: 0;
+    }}
+    body {{
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      color: #1e293b;
+      background-color: #f8fafc;
+    }}
+    
+    /* Panel Kontrol Kiri */
+    .panel {{
+      position: absolute;
+      z-index: 1000;
+      top: 12px;
+      left: 12px;
+      width: min(340px, calc(100vw - 24px));
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+      overflow: hidden;
+    }}
+    .panel header {{
+      padding: 14px 16px;
+      border-bottom: 1px solid #e2e8f0;
+      background: #f8fafc;
+    }}
+    .panel h1 {{
+      margin: 0;
+      font-size: 15px;
+      font-weight: 700;
+      color: #0f172a;
+      line-height: 1.25;
+    }}
+    .panel p {{
+      margin: 4px 0 0;
+      font-size: 12px;
+      color: #64748b;
+    }}
+    .controls {{
+      display: grid;
+      gap: 8px;
+      padding: 12px;
+    }}
+    .controls input,
+    .controls select {{
+      width: 100%;
+      box-sizing: border-box;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      padding: 8px 10px;
+      font-size: 13px;
+      background: #ffffff;
+      outline: none;
+      transition: border-color 0.2s ease;
+    }}
+    .controls input:focus,
+    .controls select:focus {{
+      border-color: #3b82f6;
+    }}
+    .legend {{
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      padding: 0 12px 12px;
+      font-size: 12px;
+      color: #475569;
+    }}
+    .dot {{
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      margin-right: 4px;
+      vertical-align: -1px;
+    }}
+    .dot.ok {{ background: #1f8f4d; }}
+    .dot.missing {{ background: #c74343; }}
+    
+    /* Panel Analisis Kanan */
+    .stats-panel {{
+      position: absolute;
+      z-index: 1000;
+      top: 12px;
+      right: 12px;
+      width: min(360px, calc(100vw - 24px));
+      max-height: calc(100vh - 24px);
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+      overflow-y: auto;
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+      display: flex;
+      flex-direction: column;
+    }}
+    .stats-panel.collapsed {{
+      transform: translateX(400px);
+      opacity: 0;
+      pointer-events: none;
+    }}
+    
+    .stats-toggle-btn {{
+      position: absolute;
+      z-index: 1000;
+      top: 12px;
+      right: 12px;
+      background: #ffffff;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
+      padding: 8px 14px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      color: #0f172a;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }}
+    .stats-toggle-btn:hover {{
+      background: #f1f5f9;
+      border-color: #94a3b8;
+    }}
+
+    .leaflet-popup-content {{
+      min-width: 260px;
+      margin: 12px;
+      font-size: 13px;
+    }}
+    .popup-title {{
+      font-weight: 700;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }}
+    .popup-row {{
+      margin: 4px 0;
+      overflow-wrap: anywhere;
+    }}
+    .popup-row span {{
+      color: #64748b;
+    }}
+    .popup-links {{
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }}
+    .popup-links a {{
+      color: #2563eb;
+      text-decoration: none;
+      font-weight: 700;
+    }}
+    .popup-links a:hover {{
+      text-decoration: underline;
+    }}
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  
+  <!-- Panel Kiri: Kontrol & Filter -->
+  <section class="panel">
+    <header>
+      <h1>Bandung CCTV Map</h1>
+      <p><span id="visibleCount">{marker_count}</span> of {marker_count} cameras shown</p>
+    </header>
+    <div class="controls">
+      <input id="searchBox" type="search" placeholder="Search CCTV name or provider">
+      <div style="display: flex; gap: 8px;">
+        <select id="providerFilter" style="flex: 1;"><option value="ALL">All Providers</option></select>
+        <select id="areaFilter" style="flex: 1;"><option value="ALL">All Areas</option></select>
+      </div>
+      <select id="sampleFilter">
+        <option value="ALL">All sample statuses</option>
+        <option value="YES">Downloaded samples only</option>
+        <option value="NO">Missing samples only</option>
+      </select>
+      
+      <!-- Visualisasi Toggle -->
+      <div style="margin-top: 8px; display: flex; flex-direction: column; gap: 8px; font-size: 12px; border-top: 1px solid #e2e8f0; padding-top: 8px;">
+        <div style="display: flex; flex-direction: column; gap: 4px;">
+          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: #334155; font-weight: 500;">
+            <input id="toggleWeather" type="checkbox"> <span>🌧️ Radar Hujan (OpenWeatherMap)</span>
+          </label>
+          <input type="text" id="owmApiKey" placeholder="API Key OpenWeatherMap" style="font-size: 11px; padding: 4px; border: 1px solid #cbd5e1; border-radius: 4px; box-sizing: border-box; margin-left: 20px; width: calc(100% - 20px);">
+        </div>
+        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: #334155; font-weight: 500;">
+          <input id="toggleHeatmap" type="checkbox"> <span>🔥 Peta Kepadatan (Heatmap)</span>
+        </label>
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 4px;">
+          <span style="font-weight: 500; color: #334155;">▤ Grid Densitas:</span>
+          <select id="hexbinFilter" style="padding: 2px 4px; font-size: 11px; width: auto; border: 1px solid #cbd5e1; border-radius: 4px;">
+            <option value="0">Off</option>
+            <option value="1">1 KM²</option>
+            <option value="2">2 KM²</option>
+          </select>
+        </div>
+        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: #334155; font-weight: 500;">
+          <input id="toggleSpatialMetrics" type="checkbox" checked> <span>🎯 Pusat & Radius Dispersi</span>
+        </label>
+        
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 4px;">
+          <span style="font-weight: 500; color: #334155;">Simulasi Jangkauan:</span>
+          <select id="radiusFilter" style="padding: 2px 4px; font-size: 11px; width: auto; border: 1px solid #cbd5e1; border-radius: 4px;">
+            <option value="0">Off</option>
+            <option value="50">50m</option>
+            <option value="100">100m</option>
+            <option value="150">150m</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="legend">
+      <span><i class="dot ok"></i>Downloaded</span>
+      <span><i class="dot missing"></i>Missing</span>
+    </div>
+  </section>
+
+  <!-- Tombol Toggle Statistik (Muncul jika panel stats ditutup) -->
+  <button id="toggleStatsBtn" class="stats-toggle-btn" style="display: none;">
+    📊 Analisis Distribusi
+  </button>
+
+  <!-- Panel Kanan: Analisis Distribusi & Statistik -->
+  <section id="statsPanel" class="stats-panel">
+    <header style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid #e2e8f0; background: #f8fafc;">
+      <h2 style="margin: 0; font-size: 14px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 6px;">
+        📊 Analisis & Distribusi
+      </h2>
+      <button id="closeStatsBtn" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b; line-height: 1;">&times;</button>
+    </header>
+    
+    <div style="padding: 14px; display: flex; flex-direction: column; gap: 16px; overflow-y: auto;">
+      <!-- Metrik Spasial -->
+      <div>
+        <h3 style="margin: 0 0 8px 0; font-size: 11px; color: #475569; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">Analisis Distribusi Spasial</h3>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 8px; border-radius: 8px;">
+            <div style="font-size: 9px; color: #64748b; font-weight: 600; text-transform: uppercase;">Pusat Rata-rata</div>
+            <div id="meanCenterVal" style="font-size: 10px; font-weight: 600; color: #0f172a; margin-top: 2px; overflow-wrap: anywhere;">-</div>
+          </div>
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 8px; border-radius: 8px;">
+            <div style="font-size: 9px; color: #64748b; font-weight: 600; text-transform: uppercase;">Radius Dispersi</div>
+            <div id="dispersionVal" style="font-size: 11px; font-weight: 600; color: #0f172a; margin-top: 2px;">-</div>
+          </div>
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 8px; border-radius: 8px;">
+            <div style="font-size: 9px; color: #64748b; font-weight: 600; text-transform: uppercase;">Cakupan Area</div>
+            <div id="areaVal" style="font-size: 11px; font-weight: 600; color: #0f172a; margin-top: 2px;">-</div>
+          </div>
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 8px; border-radius: 8px;">
+            <div style="font-size: 9px; color: #64748b; font-weight: 600; text-transform: uppercase;">Kerapatan</div>
+            <div id="densityVal" style="font-size: 11px; font-weight: 600; color: #0f172a; margin-top: 2px;">-</div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Chart Keaktifan -->
+      <div style="border-top: 1px solid #e2e8f0; padding-top: 12px;">
+        <h3 style="margin: 0 0 8px 0; font-size: 11px; color: #475569; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">Status Keaktifan CCTV</h3>
+        <div style="height: 120px; position: relative;">
+          <canvas id="statusChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Chart Provider -->
+      <div style="border-top: 1px solid #e2e8f0; padding-top: 12px;">
+        <h3 style="margin: 0 0 8px 0; font-size: 11px; color: #475569; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">Distribusi Provider (Top 5)</h3>
+        <div style="height: 150px; position: relative;">
+          <canvas id="providerChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Chart Area -->
+      <div style="border-top: 1px solid #e2e8f0; padding-top: 12px;">
+        <h3 style="margin: 0 0 8px 0; font-size: 11px; color: #475569; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">Daerah Terbanyak (Top 5)</h3>
+        <div style="height: 150px; position: relative;">
+          <canvas id="areaChart"></canvas>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.heat/0.2.0/leaflet-heat.js"></script>
+  <script>
+    const CCTV_MARKERS = {marker_json};
+    const map = L.map("map").setView([-6.9175, 107.6191], 12);
+
+    L.tileLayer("https://{{s}}.basemaps.cartocdn.com/light_all/{{z}}/{{x}}/{{y}}{{r}}.png", {{
+      maxZoom: 19,
+      subdomains: "abcd",
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+    }}).addTo(map);
+
+    // Coordinate Hover Display
+    const coordControl = L.control({{position: 'bottomleft'}});
+    coordControl.onAdd = function(map) {{
+      this._div = L.DomUtil.create('div', 'coord-display');
+      this._div.style.backgroundColor = 'rgba(255, 255, 255, 0.85)';
+      this._div.style.padding = '4px 8px';
+      this._div.style.fontSize = '12px';
+      this._div.style.fontWeight = '600';
+      this._div.style.color = '#334155';
+      this._div.style.borderRadius = '4px';
+      this._div.style.boxShadow = '0 1px 5px rgba(0,0,0,0.2)';
+      this._div.style.pointerEvents = 'none';
+      this._div.innerHTML = 'Hover on map for coordinates';
+      return this._div;
+    }};
+    coordControl.addTo(map);
+
+    map.on('mousemove', function(e) {{
+      if(coordControl._div) {{
+        coordControl._div.innerHTML = `Lat: ${{e.latlng.lat.toFixed(5)}} | Lng: ${{e.latlng.lng.toFixed(5)}}`;
+      }}
+    }});
+
+    function markerIcon(downloaded) {{
+      const color = downloaded === "YES" ? "#1f8f4d" : "#c74343";
+      return L.divIcon({{
+        className: "",
+        html: `<div style="
+          width: 14px;
+          height: 14px;
+          border-radius: 50%;
+          background: ${{color}};
+          border: 2px solid white;
+          box-shadow: 0 1px 7px rgba(0,0,0,.35);
+        "></div>`,
+        iconSize: [18, 18],
+        iconAnchor: [9, 9]
+      }});
+    }}
+
+    function popupHtml(item) {{
+      const sampleText = item.sampleDownloaded === "YES" ? "Downloaded" : "Missing";
+      const mapsUrl = `https://www.google.com/maps?q=${{item.lat}},${{item.lng}}`;
+      const streamLink = item.stream
+        ? `<a href="${{item.stream}}" target="_blank" rel="noopener">Stream</a>`
+        : "";
+      const sampleLink = item.sampleDownloaded === "YES" && item.sampleFile
+        ? `<a href="${{item.sampleFile}}" target="_blank" rel="noopener">Sample File</a>`
+        : "";
+      const errorRow = item.sampleError
+        ? `<div class="popup-row"><span>Error:</span> ${{item.sampleError}}</div>`
+        : "";
+      const liveVideoPlayer = item.stream
+        ? `<div class="live-video-container" style="margin-top: 10px; border-radius: 4px; overflow: hidden; background: #000;">
+             <video class="cctv-live-player" data-stream="${{item.stream}}" controls autoplay muted style="width: 100%; height: auto; max-height: 180px; display: block;"></video>
+           </div>`
+        : "";
+      return `
+        <div class="popup-title">${{item.name}}</div>
+        <div class="popup-row"><span>Provider:</span> ${{item.provider || "UNKNOWN"}}</div>
+        <div class="popup-row"><span>Coordinates:</span> ${{item.lat}}, ${{item.lng}}</div>
+        <div class="popup-row"><span>Sample Status:</span> ${{sampleText}}</div>
+        ${{errorRow}}
+        ${{liveVideoPlayer}}
+        <div class="popup-links">
+          <a href="${{mapsUrl}}" target="_blank" rel="noopener">Open in Maps</a>
+          ${{streamLink}}
+          ${{sampleLink}}
+        </div>
+      `;
+    }}
+
+    const markerLayer = L.layerGroup().addTo(map);
+    let heatLayer = null;
+    let meanCenterMarker = null;
+    let dispersionCircle = null;
+
+    const searchBox = document.getElementById("searchBox");
+    const providerFilter = document.getElementById("providerFilter");
+    const areaFilter = document.getElementById("areaFilter");
+    const sampleFilter = document.getElementById("sampleFilter");
+    const visibleCount = document.getElementById("visibleCount");
+    
+    const toggleWeather = document.getElementById("toggleWeather");
+    const toggleHeatmap = document.getElementById("toggleHeatmap");
+    const hexbinFilter = document.getElementById("hexbinFilter");
+    const toggleSpatialMetrics = document.getElementById("toggleSpatialMetrics");
+    const radiusFilter = document.getElementById("radiusFilter");
+
+    let hexLayer = null;
+    let radiusLayer = L.layerGroup().addTo(map);
+
+    const statsPanel = document.getElementById("statsPanel");
+    const toggleStatsBtn = document.getElementById("toggleStatsBtn");
+    const closeStatsBtn = document.getElementById("closeStatsBtn");
+
+    // Chart instances
+    let statusChartInstance = null;
+    let providerChartInstance = null;
+    let areaChartInstance = null;
+
+    function populateDropdowns() {{
+      const providers = new Set();
+      const areas = new Set();
+
+      CCTV_MARKERS.forEach(item => {{
+        providers.add(item.provider || "UNKNOWN");
+        
+        let name = item.name.toUpperCase();
+        name = name.replace(/^CCTV\\s+/, "");
+        name = name.replace(/^(TB\\s+JL[\\.\\s]*|TB\\s+|JL[\\.\\s]*|DEPAN\\s+)/, "");
+        const match = name.match(/^[A-Z\\s]+/);
+        let area = match ? match[0].trim() : name;
+        if (area.length === 0) area = "LAINNYA";
+        areas.add(area);
+        
+        item._parsedArea = area; // Cache it for filtering
+      }});
+
+      Array.from(providers).sort().forEach(p => {{
+        providerFilter.add(new Option(p, p));
+      }});
+
+      Array.from(areas).sort().forEach(a => {{
+        areaFilter.add(new Option(a, a));
+      }});
+    }}
+
+    function initCharts() {{
+      const ctxStatus = document.getElementById('statusChart').getContext('2d');
+      statusChartInstance = new Chart(ctxStatus, {{
+        type: 'doughnut',
+        data: {{
+          labels: ['Aktif', 'Mati / Missing'],
+          datasets: [{{
+            data: [0, 0],
+            backgroundColor: ['#1f8f4d', '#c74343'],
+            borderWidth: 1,
+            hoverOffset: 4
+          }}]
+        }},
+        options: {{
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {{
+            legend: {{
+              position: 'right',
+              labels: {{ boxWidth: 12, font: {{ family: 'Inter', size: 10 }} }}
+            }}
+          }}
+        }}
+      }});
+
+      const ctxProvider = document.getElementById('providerChart').getContext('2d');
+      providerChartInstance = new Chart(ctxProvider, {{
+        type: 'bar',
+        data: {{
+          labels: [],
+          datasets: [{{
+            data: [],
+            backgroundColor: '#3b82f6',
+            borderRadius: 4,
+            barThickness: 12
+          }}]
+        }},
+        options: {{
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {{
+            legend: {{ display: false }}
+          }},
+          scales: {{
+            x: {{ beginAtZero: true, ticks: {{ font: {{ family: 'Inter', size: 9 }}, precision: 0 }} }},
+            y: {{ ticks: {{ font: {{ family: 'Inter', size: 9 }} }} }}
+          }}
+        }}
+      }});
+
+      const ctxArea = document.getElementById('areaChart').getContext('2d');
+      areaChartInstance = new Chart(ctxArea, {{
+        type: 'bar',
+        data: {{
+          labels: [],
+          datasets: [{{
+            data: [],
+            backgroundColor: '#8b5cf6',
+            borderRadius: 4,
+            barThickness: 12
+          }}]
+        }},
+        options: {{
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {{
+            legend: {{ display: false }}
+          }},
+          scales: {{
+            x: {{ beginAtZero: true, ticks: {{ font: {{ family: 'Inter', size: 9 }}, precision: 0 }} }},
+            y: {{ ticks: {{ font: {{ family: 'Inter', size: 9 }} }} }}
+          }}
+        }}
+      }});
+    }}
+
+    function updateCharts(filtered) {{
+      if (!statusChartInstance || !providerChartInstance || !areaChartInstance) return;
+
+      // Update Status Chart
+      let activeCount = 0;
+      let missingCount = 0;
+      filtered.forEach(item => {{
+        if (item.sampleDownloaded === 'YES') {{
+          activeCount++;
+        }} else {{
+          missingCount++;
+        }}
+      }});
+      statusChartInstance.data.datasets[0].data = [activeCount, missingCount];
+      statusChartInstance.update();
+
+      // Update Provider & Area Charts
+      const providerCounts = {{}};
+      const areaCounts = {{}};
+
+      filtered.forEach(item => {{
+        const prov = item.provider || 'UNKNOWN';
+        providerCounts[prov] = (providerCounts[prov] || 0) + 1;
+
+        let name = item.name.toUpperCase();
+        name = name.replace(/^CCTV\\s+/, "");
+        name = name.replace(/^(TB\\s+JL[\\.\\s]*|TB\\s+|JL[\\.\\s]*|DEPAN\\s+)/, "");
+        const match = name.match(/^[A-Z\\s]+/);
+        let area = match ? match[0].trim() : name;
+        if (area.length === 0) area = "LAINNYA";
+        areaCounts[area] = (areaCounts[area] || 0) + 1;
+      }});
+
+      const sortedProviders = Object.entries(providerCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5);
+
+      providerChartInstance.data.labels = sortedProviders.map(entry => entry[0]);
+      providerChartInstance.data.datasets[0].data = sortedProviders.map(entry => entry[1]);
+      providerChartInstance.update();
+
+      const sortedAreas = Object.entries(areaCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5);
+      
+      areaChartInstance.data.labels = sortedAreas.map(entry => entry[0]);
+      areaChartInstance.data.datasets[0].data = sortedAreas.map(entry => entry[1]);
+      areaChartInstance.update();
+    }}
+
+    function updateSpatialAnalysis(filtered) {{
+      if (filtered.length === 0) {{
+        document.getElementById('meanCenterVal').textContent = '-';
+        document.getElementById('dispersionVal').textContent = '-';
+        document.getElementById('areaVal').textContent = '-';
+        document.getElementById('densityVal').textContent = '-';
+        
+        if (meanCenterMarker) {{ map.removeLayer(meanCenterMarker); meanCenterMarker = null; }}
+        if (dispersionCircle) {{ map.removeLayer(dispersionCircle); dispersionCircle = null; }}
+        return;
+      }}
+
+      // 1. Mean Center
+      let sumLat = 0, sumLng = 0;
+      filtered.forEach(item => {{
+        sumLat += item.lat;
+        sumLng += item.lng;
+      }});
+      const meanLat = sumLat / filtered.length;
+      const meanLng = sumLng / filtered.length;
+
+      document.getElementById('meanCenterVal').textContent = `${{meanLat.toFixed(5)}}, ${{meanLng.toFixed(5)}}`;
+
+      // 2. Standard Distance (Dispersion in meters)
+      let sumMetersSq = 0;
+      filtered.forEach(item => {{
+        const dyMeters = (item.lat - meanLat) * 111320;
+        const dxMeters = (item.lng - meanLng) * 111320 * Math.cos(meanLat * Math.PI / 180);
+        sumMetersSq += (dxMeters * dxMeters + dyMeters * dyMeters);
+      }});
+      const stdDistanceMeters = Math.sqrt(sumMetersSq / filtered.length);
+      document.getElementById('dispersionVal').textContent = `${{(stdDistanceMeters / 1000).toFixed(2)}} km`;
+
+      // 3. Bounding Box Area
+      let minLat = Infinity, maxLat = -Infinity;
+      let minLng = Infinity, maxLng = -Infinity;
+      filtered.forEach(item => {{
+        if (item.lat < minLat) minLat = item.lat;
+        if (item.lat > maxLat) maxLat = item.lat;
+        if (item.lng < minLng) minLng = item.lng;
+        if (item.lng > maxLng) maxLng = item.lng;
+      }});
+      const heightKm = (maxLat - minLat) * 111.32;
+      const widthKm = (maxLng - minLng) * 111.32 * Math.cos(((minLat + maxLat) / 2) * Math.PI / 180);
+      const areaSqKm = Math.max(0.001, heightKm * widthKm);
+      document.getElementById('areaVal').textContent = `${{areaSqKm.toFixed(2)}} km²`;
+
+      // 4. Density
+      const density = filtered.length / areaSqKm;
+      document.getElementById('densityVal').textContent = `${{density.toFixed(2)}} cam/km²`;
+
+      // Draw/Update Map Overlays
+      if (meanCenterMarker) {{ map.removeLayer(meanCenterMarker); meanCenterMarker = null; }}
+      if (dispersionCircle) {{ map.removeLayer(dispersionCircle); dispersionCircle = null; }}
+
+      if (toggleSpatialMetrics.checked) {{
+        const meanCenterIcon = L.divIcon({{
+          className: '',
+          html: `<div style="
+            width: 24px;
+            height: 24px;
+            background: #f1c40f;
+            border: 2px solid #d35400;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 0 12px rgba(241, 196, 15, 0.9);
+            font-size: 12px;
+            cursor: pointer;
+          ">⭐</div>`,
+          iconSize: [24, 24],
+          iconAnchor: [12, 12]
+        }});
+
+        meanCenterMarker = L.marker([meanLat, meanLng], {{ icon: meanCenterIcon }})
+          .bindPopup(`
+            <div style="font-weight: bold; font-size: 13px; margin-bottom: 4px;">Pusat Rata-rata (Mean Center)</div>
+            <div style="font-size: 12px; color: #334155; line-height: 1.4;">
+              Titik pusat koordinat sebaran CCTV saat ini.<br>
+              <b>Koordinat:</b> ${{meanLat.toFixed(5)}}, ${{meanLng.toFixed(5)}}
+            </div>
+          `)
+          .addTo(map);
+
+        dispersionCircle = L.circle([meanLat, meanLng], {{
+          radius: stdDistanceMeters,
+          color: '#3b82f6',
+          fillColor: '#3b82f6',
+          fillOpacity: 0.08,
+          dashArray: '6, 6',
+          weight: 2
+        }}).addTo(map);
+      }}
+    }}
+
+    function renderMarkers() {{
+      const query = searchBox.value.trim().toLowerCase();
+      const status = sampleFilter.value;
+      const prov = providerFilter.value;
+      const areaVal = areaFilter.value;
+      const radiusVal = parseInt(radiusFilter.value, 10);
+      const hexbinVal = parseInt(hexbinFilter.value, 10);
+      
+      markerLayer.clearLayers();
+      radiusLayer.clearLayers();
+      if (heatLayer) {{
+        map.removeLayer(heatLayer);
+        heatLayer = null;
+      }}
+      if (hexLayer) {{
+        map.removeLayer(hexLayer);
+        hexLayer = null;
+      }}
+
+      const bounds = [];
+      const filtered = [];
+
+      CCTV_MARKERS.forEach((item) => {{
+        const searchable = `${{item.name}} ${{item.provider}}`.toLowerCase();
+        const matchesQuery = !query || searchable.includes(query);
+        const matchesStatus = status === "ALL" || item.sampleDownloaded === status;
+        const matchesProv = prov === "ALL" || (item.provider || "UNKNOWN") === prov;
+        const matchesArea = areaVal === "ALL" || item._parsedArea === areaVal;
+        
+        if (!matchesQuery || !matchesStatus || !matchesProv || !matchesArea) return;
+
+        filtered.push(item);
+        bounds.push([item.lat, item.lng]);
+        
+        // Render Radius
+        if (radiusVal > 0 && hexbinVal === 0 && !toggleHeatmap.checked) {{
+          L.circle([item.lat, item.lng], {{
+            radius: radiusVal,
+            color: '#10b981',
+            fillColor: '#10b981',
+            fillOpacity: 0.15,
+            weight: 1
+          }}).addTo(radiusLayer);
+        }}
+      }});
+
+      visibleCount.textContent = filtered.length;
+
+      if (hexbinVal > 0 && filtered.length > 0) {{
+        // Render Square Grid view
+        const points = turf.featureCollection(filtered.map(item => turf.point([item.lng, item.lat])));
+        const bbox = turf.bbox(points);
+        const cellSide = hexbinVal === 1 ? 1.0 : 1.4142; // 1 KM² = 1.0 side, 2 KM² = sqrt(2) side
+        const squaregrid = turf.squareGrid(bbox, cellSide, {{units: 'kilometers'}});
+        
+        // Count points in each square
+        const gridbins = [];
+        let maxCount = 0;
+        turf.featureEach(squaregrid, function (currentFeature) {{
+          const ptsWithin = turf.pointsWithinPolygon(points, currentFeature);
+          const count = ptsWithin.features.length;
+          if (count > 0) {{
+            currentFeature.properties.count = count;
+            if (count > maxCount) maxCount = count;
+            gridbins.push(currentFeature);
+          }}
+        }});
+        
+        hexLayer = L.geoJSON(turf.featureCollection(gridbins), {{
+          style: function (feature) {{
+            const count = feature.properties.count;
+            const intensity = count / maxCount;
+            // Color scale from yellow to dark red
+            const r = Math.floor(255);
+            const g = Math.floor(255 * (1 - intensity));
+            const b = 0;
+            return {{
+              fillColor: `rgb(${{r}},${{g}},${{b}})`,
+              weight: 1,
+              color: 'white',
+              fillOpacity: 0.7
+            }};
+          }},
+          onEachFeature: function(feature, layer) {{
+            layer.bindPopup(`<div style="font-size:12px; font-weight:600; text-align:center; margin-bottom: 4px; color:#64748b;">Luas Area: ~${{hexbinVal}} KM²</div><div style="font-size:12px; font-weight:600; text-align:center;">Kepadatan:<br><span style="font-size:16px; color:#c74343;">${{feature.properties.count}}</span> CCTV</div>`);
+          }}
+        }}).addTo(map);
+      }} else if (toggleHeatmap.checked) {{
+        // Render Heatmap view
+        const heatPoints = filtered.map(item => [item.lat, item.lng, 1.0]);
+        heatLayer = L.heatLayer(heatPoints, {{
+          radius: 25,
+          blur: 15,
+          maxZoom: 15
+        }}).addTo(map);
+      }} else {{
+        // Render Marker view
+        filtered.forEach((item) => {{
+          L.marker([item.lat, item.lng], {{ icon: markerIcon(item.sampleDownloaded) }})
+            .bindPopup(popupHtml(item))
+            .addTo(markerLayer);
+        }});
+      }}
+
+      updateSpatialAnalysis(filtered);
+      updateCharts(filtered);
+
+      if (bounds.length) {{
+        map.fitBounds(bounds, {{ padding: [40, 40], maxZoom: 15 }});
+      }}
+    }}
+
+    // Event Listeners
+    const owmApiKeyInput = document.getElementById("owmApiKey");
+    const savedKey = localStorage.getItem("owmApiKey");
+    if(savedKey) {{
+      owmApiKeyInput.value = savedKey;
+    }}
+    owmApiKeyInput.addEventListener("input", (e) => {{
+      localStorage.setItem("owmApiKey", e.target.value);
+    }});
+
+    let weatherLayer = null;
+    toggleWeather.addEventListener("change", () => {{
+      if (toggleWeather.checked) {{
+        const apiKey = owmApiKeyInput.value.trim();
+        if (!apiKey) {{
+          alert("Silakan masukkan API Key OpenWeatherMap terlebih dahulu!");
+          toggleWeather.checked = false;
+          return;
+        }}
+        weatherLayer = L.tileLayer(`https://tile.openweathermap.org/map/precipitation_new/{{z}}/{{x}}/{{y}}.png?appid=${{apiKey}}`, {{
+          opacity: 0.8,
+          zIndex: 100,
+          maxZoom: 19
+        }}).addTo(map);
+      }} else {{
+        if (weatherLayer) {{
+          map.removeLayer(weatherLayer);
+          weatherLayer = null;
+        }}
+      }}
+    }});
+
+    setInterval(() => {{
+      fetch('/api/status')
+        .then(res => res.json())
+        .then(data => {{
+          let updated = false;
+          CCTV_MARKERS.forEach(item => {{
+            if (data[item.name] && item.sampleDownloaded !== data[item.name]) {{
+              item.sampleDownloaded = data[item.name];
+              updated = true;
+            }}
+          }});
+          if (updated) renderMarkers();
+        }})
+        .catch(err => console.log('Server ping failed', err));
+    }}, 30000);
+
+    searchBox.addEventListener("input", renderMarkers);
+    providerFilter.addEventListener("change", renderMarkers);
+    areaFilter.addEventListener("change", renderMarkers);
+    sampleFilter.addEventListener("change", renderMarkers);
+    radiusFilter.addEventListener("change", renderMarkers);
+    
+    toggleHeatmap.addEventListener("change", () => {{
+      if(toggleHeatmap.checked) hexbinFilter.value = "0";
+      renderMarkers();
+    }});
+    
+    hexbinFilter.addEventListener("change", () => {{
+      if(hexbinFilter.value !== "0") toggleHeatmap.checked = false;
+      renderMarkers();
+    }});
+    
+    toggleSpatialMetrics.addEventListener("change", renderMarkers);
+
+    closeStatsBtn.addEventListener('click', () => {{
+      statsPanel.classList.add('collapsed');
+      toggleStatsBtn.style.display = 'flex';
+    }});
+
+    toggleStatsBtn.addEventListener('click', () => {{
+      statsPanel.classList.remove('collapsed');
+      toggleStatsBtn.style.display = 'none';
+      if (statusChartInstance) statusChartInstance.resize();
+      if (providerChartInstance) providerChartInstance.resize();
+    }});
+
+    // Live Stream HLS Logic
+    let currentHls = null;
+    map.on('popupopen', function(e) {{
+      const popupNode = e.popup._contentNode;
+      if (!popupNode) return;
+      
+      const videoElem = popupNode.querySelector('video.cctv-live-player');
+      if (videoElem) {{
+        const streamUrl = videoElem.getAttribute('data-stream');
+        if (Hls.isSupported()) {{
+          if (currentHls) currentHls.destroy();
+          currentHls = new Hls();
+          currentHls.loadSource(streamUrl);
+          currentHls.attachMedia(videoElem);
+          currentHls.on(Hls.Events.MANIFEST_PARSED, function() {{
+            videoElem.play().catch(err => console.log("Auto-play prevented", err));
+          }});
+          currentHls.on(Hls.Events.ERROR, function(event, data) {{
+            if (data.fatal) {{
+              const container = videoElem.parentElement;
+              if (!container.querySelector('.hls-error')) {{
+                const errDiv = document.createElement('div');
+                errDiv.className = 'hls-error';
+                errDiv.style.cssText = 'position:absolute; top:0; left:0; right:0; bottom:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.8); color:#ef4444; font-size:12px; text-align:center; padding:10px; z-index:10; font-weight:600; flex-direction:column; gap:4px;';
+                errDiv.innerHTML = `<span>Gagal Memutar Stream</span><span style="font-size:10px; color:#cbd5e1; font-weight:400;">${{data.type}}</span>`;
+                container.style.position = 'relative';
+                container.appendChild(errDiv);
+              }}
+              currentHls.destroy();
+            }}
+          }});
+        }}
+        else if (videoElem.canPlayType('application/vnd.apple.mpegurl')) {{
+          // Safari native HLS support
+          videoElem.src = streamUrl;
+          videoElem.addEventListener('loadedmetadata', function() {{
+            videoElem.play().catch(err => console.log("Auto-play prevented", err));
+          }});
+        }}
+      }}
+    }});
+
+    map.on('popupclose', function(e) {{
+      if (currentHls) {{
+        currentHls.destroy();
+        currentHls = null;
+      }}
+    }});
+
+    // Initialize
+    window.addEventListener("load", () => {{
+      populateDropdowns();
+      initCharts();
+      map.invalidateSize();
+      renderMarkers();
+    }});
+  </script>
+</body>
+</html>
+"""
+
+GLOBAL_CCTV_STATUS = {}
+markers_global = []
+
+def ping_cctv_worker():
+    global GLOBAL_CCTV_STATUS, markers_global
+    for m in markers_global:
+        GLOBAL_CCTV_STATUS[m['name']] = m['sampleDownloaded']
+        
+    idx = 0
+    batch_size = 10
+    while True:
+        if not markers_global:
+            time.sleep(10)
+            continue
+            
+        batch = markers_global[idx:idx+batch_size]
+        for m in batch:
+            url = m.get('stream')
+            if not url:
+                continue
+            try:
+                req = urllib.request.Request(url, method="HEAD")
+                with urllib.request.urlopen(req, timeout=5) as res:
+                    if res.status == 200:
+                        GLOBAL_CCTV_STATUS[m['name']] = 'YES'
+                    else:
+                        GLOBAL_CCTV_STATUS[m['name']] = 'NO'
+            except Exception:
+                GLOBAL_CCTV_STATUS[m['name']] = 'NO'
+                
+        idx += batch_size
+        if idx >= len(markers_global):
+            idx = 0
+            
+        time.sleep(60)
+
+class CCTVHandler(SimpleHTTPRequestHandler):
+    def do_GET(self):
+        if self.path == '/api/status':
+            self.send_response(200)
+            self.send_header('Content-type', 'application/json')
+            self.send_header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0')
+            self.end_headers()
+            self.wfile.write(json.dumps(GLOBAL_CCTV_STATUS).encode('utf-8'))
+        elif self.path == '/' or self.path == '':
+            self.path = '/cctv_bandung_map.html'
+            return SimpleHTTPRequestHandler.do_GET(self)
+        else:
+            return SimpleHTTPRequestHandler.do_GET(self)
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Create a CCTV marker map from CSV coordinates.")
+    parser.add_argument("--input", default=str(DEFAULT_INPUT), help="Input CCTV CSV path.")
+    parser.add_argument("--output", default=str(DEFAULT_OUTPUT), help="Output HTML map path.")
+    return parser.parse_args()
+
+
+def main() -> int:
+    global markers_global
+    args = parse_args()
+    csv_path = Path(args.input)
+    output_path = Path(args.output)
+
+    markers_global = load_markers(csv_path)
+    if not markers_global:
+        raise SystemExit(f"No valid coordinates found in {csv_path}")
+
+    output_path.write_text(render_html(markers_global), encoding="utf-8")
+    print(f"Wrote {output_path} with {len(markers_global)} CCTV markers")
+    
+    t = threading.Thread(target=ping_cctv_worker, daemon=True)
+    t.start()
+    
+    port = 8080
+    print(f"Starting Local Server at http://localhost:{port}/")
+    print("Background thread is pinging 10 CCTVs every minute...")
+    print("Press Ctrl+C to stop the server.")
+    with HTTPServer(("", port), CCTVHandler) as httpd:
+        try:
+            httpd.serve_forever()
+        except KeyboardInterrupt:
+            print("\nStopping server.")
+            
+    return 0
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -1,433 +1,1875 @@
 <!doctype html>
-<html lang="en">
+<html lang="id" data-theme="dark">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Bandung CCTV Map &amp; Spatial Analytics ({{ marker_count }} cameras)</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+  <title>TENKOU-TK — Telkom University-Kyoto University Environmental &amp; Kinetic Observation Unit ({{ marker_count }} kamera)</title>
+  
+  <!-- Font Public Sans dari Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- Leaflet & GIS Libraries -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@4/dist/maplibre-gl.css" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  
   <style>
-    .leaflet-popup-content-wrapper {
-      background: #ffffff;
-      border-radius: 8px;
-      box-shadow: 0 3px 14px rgba(0, 0, 0, 0.25);
+    /* ===== Tema Warna (Dark Default / Light Variant) ===== */
+    :root {
+      color-scheme: dark;
+      --radius-sm: 2px;
+      --radius-md: 4px;
+      --font-sans: 'Public Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+      --topbar-h: 48px;
+      --dock-gap: 12px;
+
+      --bg: #0b0f17;
+      --surface-lowest: #070a10;
+      --surface-low: #0f1523;
+      --surface: #0f1523;
+      --panel-bg: rgba(15, 22, 35, 0.92);
+      --panel-bg-soft: #151f32;
+      --topbar-bg: rgba(7, 10, 16, 0.94);
+      --border: #1e293b;
+      --border-strong: #2a3850;
+      --border-strong-hover: #475569;
+      --text: #94a3b8;
+      --text-strong: #f8fafc;
+      --muted: #64748b;
+      --muted-2: #64748b;
+      --accent: #38bdf8;
+      --accent-hover: #0284c7;
+      --accent-soft: rgba(56, 189, 248, 0.12);
+      --on-fill: #0b0f17;
+      --success: #10b981;
+      --success-soft: rgba(16, 185, 129, 0.12);
+      --warning: #f59e0b;
+      --warning-soft: rgba(245, 158, 11, 0.12);
+      --danger: #ef4444;
+      --danger-soft: rgba(239, 68, 68, 0.15);
+      --chart-grid: rgba(30, 41, 59, 0.5);
+      --map-bg: #080c14;
+      --shadow-panel: 0 12px 36px rgba(0, 0, 0, 0.4);
+      --layer-cones: #38bdf8;
+      --layer-intersections: #f472b6;
+      --layer-weather: #c084fc;
+      --layer-wind: #2dd4bf;
+      --layer-hydrology: #818cf8;
+      --layer-elevation: #a3e635;
+      --layer-temperature: #fb923c;
+      --layer-heatmap: #f87171;
+      --layer-spatial: #facc15;
     }
-    .leaflet-popup-content {
-      text-align: left;
-      line-height: 1.4;
+    html[data-theme="light"] {
+      color-scheme: light;
+      --bg: #f1f5f9;
+      --surface-lowest: #f8fafc;
+      --surface-low: #ffffff;
+      --surface: #ffffff;
+      --panel-bg: rgba(255, 255, 255, 0.94);
+      --panel-bg-soft: #f1f5f9;
+      --topbar-bg: rgba(255, 255, 255, 0.94);
+      --border: #e2e8f0;
+      --border-strong: #cbd5e1;
+      --border-strong-hover: #94a3b8;
+      --text: #334155;
+      --text-strong: #0f172a;
+      --muted: #64748b;
+      --muted-2: #64748b;
+      --accent: #0284c7;
+      --accent-hover: #0369a1;
+      --accent-soft: rgba(2, 132, 199, 0.10);
+      --on-fill: #ffffff;
+      --success: #059669;
+      --success-soft: rgba(5, 150, 105, 0.12);
+      --warning: #d97706;
+      --warning-soft: rgba(217, 119, 6, 0.12);
+      --danger: #dc2626;
+      --danger-soft: rgba(220, 38, 38, 0.10);
+      --chart-grid: rgba(15, 23, 42, 0.08);
+      --map-bg: #e5e7eb;
+      --shadow-panel: 0 10px 25px -5px rgba(15, 23, 42, 0.12);
+      --layer-cones: #0284c7;
+      --layer-intersections: #db2777;
+      --layer-weather: #9333ea;
+      --layer-wind: #0d9488;
+      --layer-hydrology: #4f46e5;
+      --layer-elevation: #65a30d;
+      --layer-temperature: #ea580c;
+      --layer-heatmap: #dc2626;
+      --layer-spatial: #ca8a04;
+    }
+
+    *, *::before, *::after {
+      box-sizing: border-box;
     }
     html, body, #map {
       height: 100%;
       margin: 0;
+      padding: 0;
+      font-family: var(--font-sans);
+      background: var(--bg);
+      color: var(--text);
+      -webkit-font-smoothing: antialiased;
     }
     body {
-      font-family: 'Inter', system-ui, -apple-system, sans-serif;
-      color: #1e293b;
-      background-color: #f8fafc;
-    }
-    
-    /* Panel Kontrol Kiri */
-    .panel {
-      position: absolute;
-      z-index: 1000;
-      top: 12px;
-      left: 12px;
-      width: min(340px, calc(100vw - 24px));
-      background: rgba(255, 255, 255, 0.95);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      border: 1px solid #e2e8f0;
-      border-radius: 12px;
-      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
       overflow: hidden;
     }
-    .panel header {
-      padding: 14px 16px;
-      border-bottom: 1px solid #e2e8f0;
-      background: #f8fafc;
-    }
-    .panel h1 {
-      margin: 0;
-      font-size: 15px;
-      font-weight: 700;
-      color: #0f172a;
-      line-height: 1.25;
-    }
-    .panel p {
-      margin: 4px 0 0;
-      font-size: 12px;
-      color: #64748b;
-    }
-    .controls {
-      display: grid;
-      gap: 8px;
-      padding: 12px;
-    }
-    .controls input,
-    .controls select {
-      width: 100%;
-      box-sizing: border-box;
-      border: 1px solid #cbd5e1;
-      border-radius: 8px;
-      padding: 8px 10px;
-      font-size: 13px;
-      background: #ffffff;
-      outline: none;
-      transition: border-color 0.2s ease;
-    }
-    .controls input:focus,
-    .controls select:focus {
-      border-color: #3b82f6;
-    }
-    .legend {
-      display: flex;
-      gap: 12px;
-      align-items: center;
-      padding: 0 12px 12px;
-      font-size: 12px;
-      color: #475569;
-    }
-    .dot {
-      display: inline-block;
-      width: 10px;
-      height: 10px;
-      border-radius: 50%;
-      margin-right: 4px;
-      vertical-align: -1px;
-    }
-    .dot.ok { background: #1f8f4d; }
-    .dot.missing { background: #c74343; }
-    
-    /* Panel Analisis Kanan */
-    .stats-panel {
-      position: absolute;
-      z-index: 1000;
-      top: 12px;
-      right: 12px;
-      width: min(360px, calc(100vw - 24px));
-      max-height: calc(100vh - 24px);
-      background: rgba(255, 255, 255, 0.95);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-      border: 1px solid #e2e8f0;
-      border-radius: 12px;
-      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
-      overflow-y: auto;
-      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
-      display: flex;
-      flex-direction: column;
-    }
-    .stats-panel.collapsed {
-      transform: translateX(400px);
-      opacity: 0;
-      pointer-events: none;
-    }
-    
-    .stats-toggle-btn {
-      position: absolute;
-      z-index: 1000;
-      top: 12px;
-      right: 12px;
-      background: #ffffff;
-      border: 1px solid #cbd5e1;
-      border-radius: 8px;
-      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.12);
-      padding: 8px 14px;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      color: #0f172a;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      transition: all 0.2s ease;
-    }
-    .stats-toggle-btn:hover {
-      background: #f1f5f9;
-      border-color: #94a3b8;
+
+    .mono {
+      font-family: var(--font-mono);
     }
 
-    .leaflet-popup-content {
-      min-width: 260px;
-      margin: 12px;
-      font-size: 13px;
+    /* Screen Reader Only */
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border-width: 0;
     }
+
+    /* ===== Leaflet & Controls ===== */
+    .leaflet-container {
+      background: var(--map-bg);
+      font-family: var(--font-sans);
+    }
+    .leaflet-popup-content-wrapper {
+      background: var(--surface-low);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-panel);
+      padding: 0;
+      color: var(--text);
+    }
+    .leaflet-popup-tip {
+      background: var(--surface-low);
+      border: 1px solid var(--border-strong);
+    }
+    .leaflet-popup-content {
+      margin: 12px 14px;
+      min-width: 260px;
+      max-width: 320px;
+      line-height: 1.4;
+    }
+    .leaflet-popup-close-button {
+      color: var(--muted) !important;
+      padding: 4px !important;
+    }
+    .leaflet-popup-close-button:hover {
+      color: var(--text-strong) !important;
+    }
+    .leaflet-control-zoom {
+      border: none !important;
+      box-shadow: var(--shadow-panel) !important;
+    }
+    .leaflet-control-zoom a {
+      background: var(--panel-bg) !important;
+      color: var(--text-strong) !important;
+      border-color: var(--border) !important;
+      border-radius: var(--radius-sm) !important;
+      transition: all 0.15s ease;
+    }
+    .leaflet-control-zoom a:hover {
+      background: var(--panel-bg-soft) !important;
+      color: var(--accent) !important;
+    }
+    .leaflet-control-attribution {
+      background: var(--panel-bg) !important;
+      color: var(--muted) !important;
+      font-size: 10px !important;
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+    }
+    .leaflet-control-attribution a {
+      color: var(--accent) !important;
+    }
+
+    /* Popup Styling */
     .popup-title {
+      font-size: 12px;
       font-weight: 700;
-      margin-bottom: 8px;
-      font-size: 14px;
+      letter-spacing: 0.02em;
+      color: var(--text-strong);
+      margin-bottom: 6px;
     }
     .popup-row {
-      margin: 4px 0;
-      overflow-wrap: anywhere;
+      font-size: 11px;
+      font-family: var(--font-mono);
+      margin: 3px 0;
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
     }
-    .popup-row span {
-      color: #64748b;
+    .popup-row span:first-child {
+      color: var(--muted);
     }
     .popup-links {
+      margin-top: 8px;
+      padding-top: 6px;
+      border-top: 1px dashed var(--border);
       display: flex;
       gap: 8px;
-      margin-top: 10px;
-      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
     }
     .popup-links a {
-      color: #2563eb;
+      color: var(--accent);
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
       text-decoration: none;
-      font-weight: 700;
     }
     .popup-links a:hover {
       text-decoration: underline;
     }
+
+    /* ===== Top Telemetry Bar ===== */
+    .top-telemetry-bar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: var(--topbar-h);
+      background: var(--topbar-bg);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      z-index: 1100;
+      gap: 12px;
+    }
+    .brand-section {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .status-beacon {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+      box-shadow: 0 0 8px var(--success);
+      flex-shrink: 0;
+    }
+    .brand-title {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--text-strong);
+      margin: 0;
+    }
+    .brand-subtitle {
+      font-size: 11px;
+      color: var(--muted);
+      text-decoration: none;
+      border-left: 1px solid var(--border-strong);
+      padding-left: 8px;
+      max-width: 420px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      transition: color 0.15s ease;
+    }
+    .brand-subtitle:hover {
+      color: var(--accent);
+    }
+    .top-telemetry-metrics {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      overflow: hidden;
+    }
+    .telemetry-chip {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--surface-lowest);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 4px 10px;
+      font-size: 11px;
+      white-space: nowrap;
+    }
+    .telemetry-label {
+      color: var(--muted);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .telemetry-val {
+      font-family: var(--font-mono);
+      font-weight: 600;
+      color: var(--text-strong);
+      font-variant-numeric: tabular-nums;
+    }
+    .telemetry-val.highlight {
+      color: var(--accent);
+      font-weight: 700;
+    }
+    .telemetry-val.is-success {
+      color: var(--success);
+    }
+    .telemetry-val.is-danger {
+      color: var(--danger);
+    }
+    .top-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+
+    /* ===== Dock Panels (Left Filter & Right Stats) ===== */
+    .panel, .stats-panel {
+      position: absolute;
+      top: calc(var(--topbar-h) + var(--dock-gap));
+      background: var(--panel-bg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-panel);
+      z-index: 1000;
+      max-height: calc(100vh - var(--topbar-h) - 2 * var(--dock-gap));
+      display: flex;
+      flex-direction: column;
+      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease;
+    }
+    .panel {
+      left: var(--dock-gap);
+      width: min(320px, calc(100vw - 24px));
+    }
+    .stats-panel {
+      right: var(--dock-gap);
+      width: min(340px, calc(100vw - 24px));
+      overflow-y: auto;
+    }
+    .panel.collapsed {
+      transform: translateX(calc(-100% - 24px));
+      opacity: 0;
+      pointer-events: none;
+    }
+    .stats-panel.collapsed {
+      transform: translateX(calc(100% + 24px));
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    .panel header, .stats-panel header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 14px;
+      background: var(--surface-lowest);
+      border-bottom: 1px solid var(--border);
+      border-top-left-radius: inherit;
+      border-top-right-radius: inherit;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+    .panel header h2, .stats-panel header h2 {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-strong);
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .panel-body, .panel-content {
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      overflow-y: auto;
+    }
+
+    /* Control Groups */
+    .control-section {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .section-label {
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      margin-bottom: 2px;
+    }
+    .controls-input, .controls-select {
+      width: 100%;
+      height: 32px;
+      background: var(--surface-lowest);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-strong);
+      font-family: var(--font-sans);
+      font-size: 11px;
+      padding: 0 8px;
+      transition: border-color 0.15s ease;
+      outline: none;
+    }
+    .controls-input:focus, .controls-select:focus {
+      border-color: var(--accent);
+      box-shadow: none;
+    }
+    .controls-input::placeholder {
+      color: var(--muted);
+    }
+
+    /* Corridor Preset Chips */
+    .preset-chips-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+    .preset-chip {
+      background: var(--surface-lowest);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text);
+      padding: 4px 8px;
+      font-size: 10px;
+      font-family: var(--font-sans);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .preset-chip:hover {
+      border-color: var(--border-strong-hover);
+      color: var(--text-strong);
+      background: var(--surface-low);
+    }
+    .preset-chip.active {
+      background: var(--accent-soft);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    /* System Buttons */
+    .reset-filter-btn, .refresh-btn, .hud-action-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      height: 30px;
+      padding: 0 10px;
+      background: var(--surface-lowest);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-strong);
+      font-size: 11px;
+      font-weight: 600;
+      font-family: var(--font-sans);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .reset-filter-btn:hover, .refresh-btn:hover, .hud-action-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-soft);
+    }
+    .reset-filter-btn {
+      width: 100%;
+      justify-content: center;
+    }
+    .refresh-btn {
+      width: 100%;
+      justify-content: center;
+    }
+    .refresh-btn.scanning {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+    .reset-filter-btn:disabled, .refresh-btn:disabled {
+      opacity: 0.65;
+      cursor: not-allowed;
+    }
+    .hud-toggle-btn, .panel-close-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 30px;
+      height: 30px;
+      background: var(--surface-lowest);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-strong);
+      cursor: pointer;
+      transition: all 0.15s ease;
+      padding: 0;
+    }
+    .panel-close-btn {
+      background: transparent;
+      border-color: transparent;
+    }
+    .panel-close-btn:hover, .hud-toggle-btn:hover {
+      border-color: var(--border-strong-hover);
+      color: var(--accent);
+      background: var(--surface-low);
+    }
+    .hud-toggle-btn[aria-expanded="false"] {
+      color: var(--muted);
+    }
+
+    /* Inline Action Buttons */
+    .inline-action-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--accent);
+      color: var(--on-fill);
+      border: 1px solid var(--accent);
+      border-radius: var(--radius-sm);
+      padding: 3px 8px;
+      font-family: var(--font-sans);
+      font-size: 10px;
+      font-weight: 600;
+      line-height: 1.2;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .inline-action-btn:hover {
+      background: var(--accent-hover);
+      border-color: var(--accent-hover);
+    }
+    .inline-action-btn.outline {
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+    .inline-action-btn.outline:hover {
+      background: var(--accent);
+      color: var(--on-fill);
+    }
+    .inline-action-btn.block {
+      width: 100%;
+      display: flex;
+      justify-content: center;
+      gap: 4px;
+      margin-top: 4px;
+      padding: 4px 8px;
+    }
+
+    /* Switches & Checkboxes */
+    .toggle-label, .toggle-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      padding: 4px 0;
+      border-bottom: 1px dashed var(--border);
+      color: var(--text);
+      cursor: pointer;
+      user-select: none;
+    }
+    .toggle-row {
+      justify-content: space-between;
+    }
+    .toggle-label:last-child, .toggle-row:last-child {
+      border-bottom: none;
+    }
+    .toggle-label input[type="checkbox"], .toggle-row input[type="checkbox"] {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      background: var(--surface-lowest);
+      border: 1.5px solid var(--layer-color, var(--border-strong));
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      outline: none;
+      position: relative;
+      flex-shrink: 0;
+      margin: 0;
+      transition: all 0.15s ease;
+    }
+    .toggle-label input[type="checkbox"]:checked, .toggle-row input[type="checkbox"]:checked {
+      background: var(--layer-color, var(--accent));
+      border-color: var(--layer-color, var(--accent));
+    }
+    .toggle-label input[type="checkbox"]:checked::after, .toggle-row input[type="checkbox"]:checked::after {
+      content: '';
+      position: absolute;
+      left: 4px;
+      top: 1px;
+      width: 4px;
+      height: 8px;
+      border: solid var(--on-fill);
+      border-width: 0 1.5px 1.5px 0;
+      transform: rotate(45deg);
+    }
+    #togglePerspectives   { --layer-color: var(--layer-cones); }
+    #toggleIntersections  { --layer-color: var(--layer-intersections); }
+    #toggleWeather        { --layer-color: var(--layer-weather); }
+    #toggleWind           { --layer-color: var(--layer-wind); }
+    #toggleHydrology      { --layer-color: var(--layer-hydrology); }
+    #toggleElevation      { --layer-color: var(--layer-elevation); }
+    #toggleTemperature    { --layer-color: var(--layer-temperature); }
+    #toggleHeatmap        { --layer-color: var(--layer-heatmap); }
+    #toggleSpatialMetrics { --layer-color: var(--layer-spatial); }
+
+    /* KPI Matrix / Stats Grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 6px;
+    }
+    .stat-tile {
+      background: var(--surface-lowest);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 8px 10px;
+    }
+    .stat-tile-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      margin-bottom: 2px;
+    }
+    .stat-tile-value {
+      font-size: 15px;
+      font-weight: 700;
+      font-family: var(--font-mono);
+      color: var(--text-strong);
+      font-variant-numeric: tabular-nums;
+      overflow-wrap: anywhere;
+    }
+
+    /* Intersections / Hotspots */
+    .isect-top-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      padding: 6px 8px;
+      background: var(--surface-lowest);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .isect-top-item:hover {
+      border-color: var(--accent);
+      background: var(--accent-soft);
+    }
+    .badge-count {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2px 6px;
+      background: var(--accent-soft);
+      border: 1px solid var(--accent);
+      border-radius: var(--radius-sm);
+      color: var(--accent);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Map Intersections Badge */
+    .isect-marker-badge {
+      min-width: 24px;
+      height: 20px;
+      padding: 0 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1px;
+      background: var(--surface-lowest);
+      border: 1px solid var(--accent);
+      color: var(--accent);
+      border-radius: var(--radius-sm);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+      transition: all 0.15s ease;
+      cursor: pointer;
+    }
+    .isect-marker-badge:hover {
+      background: var(--accent);
+      color: var(--on-fill);
+      transform: scale(1.15);
+    }
+    .isect-marker-badge.traffic-signals {
+      border-color: var(--danger);
+      color: var(--danger);
+    }
+
+    /* Coord Footer Telemetry */
+    .coord-display {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--panel-bg);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 4px 8px;
+      font-size: 11px;
+      font-family: var(--font-mono);
+      color: var(--text);
+      box-shadow: var(--shadow-panel);
+    }
+    .coord-sep {
+      border-left: 1px solid var(--border-strong);
+      padding-left: 8px;
+    }
+    .copy-coord-btn {
+      display: inline-flex;
+      align-items: center;
+      background: var(--surface-lowest);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-strong);
+      font-size: 10px;
+      font-family: var(--font-sans);
+      padding: 2px 6px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .copy-coord-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-soft);
+    }
+    .legend-indicator {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 11px;
+      color: var(--text);
+    }
+    .point-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .point-dot.live {
+      background: var(--success);
+      box-shadow: 0 0 6px var(--success);
+    }
+    .point-dot.offline {
+      background: var(--danger);
+      box-shadow: 0 0 6px var(--danger);
+    }
+
+    /* Empty State */
+    .empty-state-card {
+      background: var(--surface-lowest);
+      border: 1px dashed var(--border-strong);
+      border-radius: var(--radius-md);
+      padding: 12px;
+      text-align: center;
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    /* Toast Banner */
+    .toast-banner {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      opacity: 0;
+      pointer-events: none;
+      background: var(--surface-low);
+      border: 1px solid var(--border-strong);
+      color: var(--text-strong);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-panel);
+      font-size: 12px;
+      padding: 8px 16px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      z-index: 4000;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .toast-banner.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    /* Modals */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 3000;
+      padding: 16px;
+    }
+    .modal-backdrop.open {
+      display: flex;
+    }
+    .modal-window {
+      background: var(--panel-bg);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-panel);
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: var(--surface-lowest);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .modal-header h3 {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-strong);
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .modal-body {
+      padding: 16px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    /* CCTV Wall */
+    .cctv-wall-grid {
+      display: grid;
+      gap: 12px;
+    }
+    .cctv-wall-grid.grid-2x2 {
+      grid-template-columns: repeat(2, 1fr);
+    }
+    .cctv-wall-grid.grid-3x3 {
+      grid-template-columns: repeat(3, 1fr);
+    }
+    .cctv-wall-grid.grid-1x4 {
+      grid-template-columns: repeat(4, 1fr);
+    }
+    .cctv-wall-card {
+      background: var(--surface-lowest);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .cctv-wall-card header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 10px;
+      background: var(--surface-low);
+      border-bottom: 1px solid var(--border);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-strong);
+    }
+    .cctv-wall-card .video-wrap {
+      background: #000;
+      aspect-ratio: 16/9;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    .cctv-wall-card video {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: #000;
+    }
+    .cctv-wall-card footer {
+      padding: 6px 10px;
+      background: var(--surface-low);
+      border-top: 1px solid var(--border);
+      font-size: 10px;
+      font-family: var(--font-mono);
+      color: var(--muted);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* Flood Cards */
+    .flood-card {
+      background: var(--surface-lowest);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      transition: border-color 0.15s ease;
+    }
+    .flood-card:hover {
+      border-color: var(--accent);
+    }
+    .risk-pill {
+      height: 20px;
+      padding: 0 6px;
+      border-radius: var(--radius-sm);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      border: 1px solid currentColor;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .risk-pill.normal {
+      color: var(--success);
+      background: var(--success-soft);
+    }
+    .risk-pill.waspada {
+      color: var(--warning);
+      background: var(--warning-soft);
+    }
+    .risk-pill.siaga {
+      color: var(--danger);
+      background: var(--danger-soft);
+    }
+
+    /* Badges & Weather Legends */
+    .weather-station-badge {
+      background: var(--panel-bg);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--radius-sm);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-strong);
+      padding: 2px 6px;
+      transition: border-color 0.15s ease;
+    }
+    .weather-station-badge:hover {
+      border-color: var(--accent);
+    }
+    .river-gauge-badge {
+      background: var(--surface-lowest);
+      border-radius: var(--radius-sm);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      font-weight: 600;
+      border: 1px solid currentColor;
+      padding: 2px 6px;
+    }
+    .river-gauge-badge.normal {
+      color: var(--success);
+      border-color: var(--success);
+    }
+    .river-gauge-badge.waspada {
+      color: var(--warning);
+      border-color: var(--warning);
+    }
+    .river-gauge-badge.siaga {
+      color: var(--danger);
+      border-color: var(--danger);
+      animation: pulse-danger 1.5s infinite;
+    }
+    @keyframes pulse-danger {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+    .weather-legend-box {
+      background: var(--panel-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      font-family: var(--font-mono);
+      font-size: 10px;
+      box-shadow: var(--shadow-panel);
+      padding: 8px 10px;
+      color: var(--text);
+    }
+    .legend-scale-bar {
+      height: 6px;
+      border-radius: var(--radius-sm);
+      margin-top: 4px;
+    }
+    .weather-cls-badge {
+      border-radius: var(--radius-sm);
+      font-family: var(--font-mono);
+    }
+
+    /* Theme Toggle Icon Swap */
+    html[data-theme="dark"] #themeToggleBtn .icon-moon,
+    html[data-theme="light"] #themeToggleBtn .icon-sun {
+      display: none;
+    }
+
+    /* Focus, Scrollbar, Selection */
+    :focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 1px;
+      border-radius: var(--radius-sm);
+    }
+    ::selection {
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: var(--border-strong);
+      border-radius: var(--radius-sm);
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--border-strong-hover);
+    }
+    .telemetry-val, .badge-count, .kpi-number, .stat-tile-value, .coord-display, #refreshMetaText {
+      font-family: var(--font-mono);
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Utility Animations */
+    .spin-icon {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.3s linear;
+    }
+    .spin-icon.spinning {
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin {
+      100% { transform: rotate(360deg); }
+    }
+    .corridor-row {
+      animation: fadeIn 0.3s ease-out backwards;
+      animation-delay: var(--stagger, 0ms);
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes statFlash {
+      0% { color: var(--accent); }
+      100% { color: var(--text-strong); }
+    }
+    .stat-value-flash {
+      animation: statFlash 0.6s ease-out;
+    }
+
+    /* Responsive */
+    @media (max-width: 1100px) {
+      .brand-subtitle { display: none; }
+    }
+    @media (max-width: 900px) {
+      .top-telemetry-metrics .telemetry-chip:not(:first-child),
+      .btn-label {
+        display: none;
+      }
+    }
+    @media (max-width: 768px) {
+      .top-telemetry-bar { padding: 0 8px; }
+      .brand-title { font-size: 12px; }
+      .panel, .stats-panel {
+        width: calc(100vw - 24px);
+        max-height: 50vh;
+      }
+      .toggle-label input[type="checkbox"],
+      .toggle-row input[type="checkbox"] {
+        width: 18px;
+        height: 18px;
+      }
+      .preset-chip {
+        padding: 8px 12px;
+        font-size: 12px;
+      }
+      .hud-action-btn, .hud-toggle-btn, .panel-close-btn {
+        min-width: 36px;
+        min-height: 36px;
+      }
+      .cctv-wall-grid.grid-2x2,
+      .cctv-wall-grid.grid-3x3,
+      .cctv-wall-grid.grid-1x4 {
+        grid-template-columns: 1fr;
+      }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+      }
+    }
   </style>
 </head>
 <body>
+  <!-- Top Telemetry Bar -->
+  <header class="top-telemetry-bar">
+    <div class="brand-section">
+      <span class="status-beacon" aria-hidden="true"></span>
+      <h1 class="brand-title">TENKOU-TK</h1>
+      <span class="brand-subtitle" title="Telkom University-Kyoto University Environmental &amp; Kinetic Observation Unit">Telkom University-Kyoto University Environmental &amp; Kinetic Observation Unit</span>
+    </div>
+    <div class="top-telemetry-metrics">
+      <div class="telemetry-chip"><span class="telemetry-label">Kamera Tampil</span><span class="telemetry-val highlight" id="visibleCount">{{ marker_count }}</span><span class="telemetry-label">/ <span id="totalCount">{{ marker_count }}</span></span></div>
+      <div class="telemetry-chip"><span class="telemetry-label">Online</span><span class="telemetry-val is-success" id="hdrOnlineCount">-</span></div>
+      <div class="telemetry-chip"><span class="telemetry-label">Offline</span><span class="telemetry-val is-danger" id="hdrOfflineCount">-</span></div>
+      <div class="telemetry-chip"><span class="telemetry-label">Klaster Simpang</span><span class="telemetry-val">{{ intersections_count }}</span></div>
+    </div>
+    <div class="top-actions">
+      <button id="openCctvWallBtn" class="hud-action-btn" type="button" title="Buka CCTV Wall Multi-Grid Koridor"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="2"/><line x1="12" y1="2" x2="12" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/></svg> <span class="btn-label">CCTV Wall</span></button>
+      <button id="openFloodRiskBtn" class="hud-action-btn" type="button" title="Peringatan Dini Banjir & Cuaca"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="16" y1="13" x2="16" y2="21"/><line x1="8" y1="13" x2="8" y2="21"/><line x1="12" y1="15" x2="12" y2="23"/><path d="M20 16.58A5 5 0 0 0 18 7h-1.26A8 8 0 1 0 4 15.25"/></svg> <span class="btn-label">Banjir &amp; Cuaca</span></button>
+      <button id="themeToggleBtn" class="hud-toggle-btn" type="button" aria-label="Ganti Tema Gelap/Terang" title="Ganti Tema Gelap/Terang"><svg class="icon-sun" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg><svg class="icon-moon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg></button>
+      <button id="toggleControlsBtn" class="hud-toggle-btn" type="button" aria-controls="leftPanel" aria-expanded="true" aria-label="Tampilkan/Sembunyikan Panel Filter" title="Panel Filter"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg></button>
+      <button id="toggleStatsBtn" class="hud-toggle-btn" type="button" aria-controls="statsPanel" aria-expanded="true" aria-label="Tampilkan/Sembunyikan Panel Analisis" title="Panel Analisis"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="9 18 15 12 9 6"/></svg></button>
+    </div>
+  </header>
+
   <div id="map"></div>
-  
+
+  <!-- Toast Notification Banner -->
+  <div id="toastBanner" class="toast-banner" role="status" aria-live="polite">
+    <span id="toastIcon">✅</span>
+    <span id="toastMessage">Status CCTV berhasil diperbarui</span>
+  </div>
+
   <!-- Panel Kiri: Kontrol & Filter -->
-  <section class="panel">
+  <section id="leftPanel" class="panel" aria-label="Panel Kontrol dan Filter CCTV">
     <header>
-      <h1>Bandung CCTV Map</h1>
-      <p><span id="visibleCount">375</span> of {{ marker_count }} cameras shown</p>
+      <h2><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg> Filter &amp; Lapisan Spasial</h2>
+      <button id="closeLeftPanelBtn" class="panel-close-btn" type="button" aria-label="Tutup Panel Kontrol"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
     </header>
-    <div class="controls">
-      <input id="searchBox" type="search" placeholder="Search CCTV name or provider">
-      <div style="display: flex; gap: 8px;">
-        <select id="providerFilter" style="flex: 1;"><option value="ALL">All Providers</option></select>
-        <select id="areaFilter" style="flex: 1;"><option value="ALL">All Areas</option></select>
-      </div>
-      <select id="sampleFilter">
-        <option value="ALL">All sample statuses</option>
-        <option value="YES">Downloaded samples only</option>
-        <option value="NO">Missing samples only</option>
-      </select>
-      
-      <!-- Visualisasi Toggle -->
-      <div style="margin-top: 8px; display: flex; flex-direction: column; gap: 8px; font-size: 12px; border-top: 1px solid #e2e8f0; padding-top: 8px;">
-        <div style="display: flex; flex-direction: column; gap: 4px;">
-          <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: #334155; font-weight: 500;">
-            <input id="toggleWeather" type="checkbox"> <span>🌧️ Radar Hujan (OpenWeatherMap)</span>
-          </label>
-          {% if not owm_api_key %}
-          <input type="text" id="owmApiKey" placeholder="API Key OpenWeatherMap" style="font-size: 11px; padding: 4px; border: 1px solid #cbd5e1; border-radius: 4px; box-sizing: border-box; margin-left: 20px; width: calc(100% - 20px);">
-          {% endif %}
+    
+    <div class="panel-content">
+      <!-- Section 1: Pencarian & Filter -->
+      <div class="control-section">
+        <label for="searchBox" class="section-label">Pencarian &amp; Filter Cepat</label>
+        <input id="searchBox" class="controls-input" type="search" placeholder="Cari nama CCTV atau provider..." aria-label="Cari nama CCTV atau provider">
+        
+        <!-- Preset Corridor Chips -->
+        <div class="preset-chips-container" role="group" aria-label="Filter Koridor Cepat">
+          <button class="preset-chip active" data-preset="ALL">Semua</button>
+          <button class="preset-chip" data-preset="ROI_ONLY">Dianotasi ROI</button>
+          <button class="preset-chip" data-preset="ACTIVE_ONLY">Aktif Saja</button>
+          <button class="preset-chip" data-preset="PASTEUR">Pasteur</button>
+          <button class="preset-chip" data-preset="DAGO">Dago</button>
+          <button class="preset-chip" data-preset="ALUN">Alun-Alun</button>
+          <button class="preset-chip" data-preset="BATAS">Batas Kota</button>
         </div>
-        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: #334155; font-weight: 500;">
-          <input id="toggleHeatmap" type="checkbox"> <span>🔥 Peta Kepadatan (Heatmap)</span>
+
+        <div style="display: flex; gap: 8px;">
+          <div style="flex: 1;">
+            <label for="providerFilter" class="sr-only">Pilih Provider</label>
+            <select id="providerFilter" class="controls-select" aria-label="Pilih Provider">
+              <option value="ALL">Semua Provider</option>
+            </select>
+          </div>
+          <div style="flex: 1;">
+            <label for="areaFilter" class="sr-only">Pilih Wilayah</label>
+            <select id="areaFilter" class="controls-select" aria-label="Pilih Wilayah">
+              <option value="ALL">Semua Wilayah</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label for="roiFilter" class="sr-only">Status Anotasi ROI</label>
+          <select id="roiFilter" class="controls-select" aria-label="Status Anotasi ROI (Ground-Truth)">
+            <option value="ALL">Semua Status Anotasi ({{ marker_count }} CCTV)</option>
+            <option value="WITH_ROI">Memiliki Anotasi ROI Presisi (Manual)</option>
+            <option value="WITHOUT_ROI">Belum Dianotasi (Estimasi Default)</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="sampleFilter" class="sr-only">Status Unduhan Sampel</label>
+          <select id="sampleFilter" class="controls-select" aria-label="Status Unduhan Sampel">
+            <option value="ALL">Semua Status Sampel</option>
+            <option value="YES">Sampel Terunduh (Aktif)</option>
+            <option value="NO">Sampel Belum Terunduh</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="intersectionFilter" class="sr-only">Filter Hubungan Persimpangan</label>
+          <select id="intersectionFilter" class="controls-select" aria-label="Filter Hubungan Persimpangan Jalan">
+            <option value="ALL">Semua Titik (Persimpangan &amp; Ruas Jalan)</option>
+            <option value="WITHIN_100_PEREMPATAN">Hanya Dekat Perempatan 4-Arah (&lt;100m)</option>
+            <option value="WITHIN_100_ALL">Dekat Semua Persimpangan (&lt;100m)</option>
+            <option value="OUTSIDE_100">Di Luar Area Persimpangan (&gt;100m)</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="cardinalFilter" class="sr-only">Filter Arah Perspektif Kamera</label>
+          <select id="cardinalFilter" class="controls-select" aria-label="Filter Arah Perspektif Kamera">
+            <option value="ALL">Semua Arah Perspektif (360°)</option>
+            <option value="Utara">Menghadap Utara (337.5° - 22.5°)</option>
+            <option value="Timur Laut">Menghadap Timur Laut (22.5° - 67.5°)</option>
+            <option value="Timur">Menghadap Timur (67.5° - 112.5°)</option>
+            <option value="Tenggara">Menghadap Tenggara (112.5° - 157.5°)</option>
+            <option value="Selatan">Menghadap Selatan (157.5° - 202.5°)</option>
+            <option value="Barat Daya">Menghadap Barat Daya (202.5° - 247.5°)</option>
+            <option value="Barat">Menghadap Barat (247.5° - 292.5°)</option>
+            <option value="Barat Laut">Menghadap Barat Laut (292.5° - 337.5°)</option>
+          </select>
+        </div>
+
+        <button id="resetFiltersBtn" class="reset-filter-btn" type="button">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg> Reset Semua Filter
+        </button>
+
+        <div style="display: flex; flex-direction: column; gap: 4px; border-top: 1px dashed var(--border); padding-top: 8px; margin-top: 2px;">
+          <button id="refreshStatusBtn" class="refresh-btn" type="button" aria-label="Pindai ulang keaktifan semua CCTV">
+            <span class="spin-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></span> <span id="refreshBtnText">Refresh Status CCTV</span>
+          </button>
+          <div id="refreshMetaText" class="mono" style="font-size: 10px; color: var(--muted); text-align: center;">Memuat status keaktifan...</div>
+        </div>
+      </div>
+
+      <!-- Section 2: Lapisan Spasial & Cuaca -->
+      <div class="control-section" style="border-top: 1px solid var(--border); padding-top: 10px;">
+        <span class="section-label">Lapisan Spasial &amp; Cuaca</span>
+        
+        <!-- Lapisan Arah Hadap (Perspektif Kamera) -->
+        <label class="toggle-label">
+          <input id="togglePerspectives" type="checkbox">
+          <span>Lapisan Arah Hadap (Vision Cones)</span>
         </label>
-        <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 4px;">
-          <span style="font-weight: 500; color: #334155;">▤ Grid Densitas:</span>
-          <select id="hexbinFilter" style="padding: 2px 4px; font-size: 11px; width: auto; border: 1px solid #cbd5e1; border-radius: 4px;">
-            <option value="0">Off</option>
+
+        <!-- Lapisan Persimpangan Jalan -->
+        <label class="toggle-label">
+          <input id="toggleIntersections" type="checkbox" checked>
+          <span>Lapisan Persimpangan ({{ intersections_count }} Titik)</span>
+        </label>
+
+        <!-- Open-Meteo 1: Radar Presipitasi & Cuaca -->
+        <label class="toggle-label">
+          <input id="toggleWeather" type="checkbox">
+          <span>Radar Hujan &amp; Cuaca (Open-Meteo)</span>
+        </label>
+
+        <!-- Open-Meteo 2: Vektor & Aliran Angin -->
+        <label class="toggle-label">
+          <input id="toggleWind" type="checkbox">
+          <span>Aliran &amp; Vektor Angin (Open-Meteo)</span>
+        </label>
+
+        <!-- Open-Meteo 3: Titik Pantau Debit Sungai & Hidrologi -->
+        <label class="toggle-label">
+          <input id="toggleHydrology" type="checkbox">
+          <span>Pantau Debit Sungai (GloFAS Flood API)</span>
+        </label>
+
+        <!-- Topografi: Heatmap Elevasi (DEM) -->
+        <label class="toggle-label">
+          <input id="toggleElevation" type="checkbox">
+          <span>Heatmap Elevasi (Topografi DEM)</span>
+        </label>
+
+        <!-- Cuaca: Heatmap Suhu (placeholder, nanti hasil forecasting) -->
+        <label class="toggle-label">
+          <input id="toggleTemperature" type="checkbox">
+          <span>Heatmap Suhu (Placeholder)</span>
+        </label>
+
+        <!-- Heatmap -->
+        <label class="toggle-label">
+          <input id="toggleHeatmap" type="checkbox">
+          <span>Peta Kepadatan (Heatmap)</span>
+        </label>
+        <!-- Grid Densitas -->
+        <div class="toggle-row">
+          <label for="hexbinFilter" class="toggle-label" style="margin: 0;">
+            <span>Grid Densitas:</span>
+          </label>
+          <select id="hexbinFilter" class="controls-select" style="width: auto; padding: 4px 8px; font-size: 11px;" aria-label="Pilih Grid Densitas">
+            <option value="0">Nonaktif</option>
             <option value="1">1 KM²</option>
             <option value="2">2 KM²</option>
           </select>
         </div>
-        <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; color: #334155; font-weight: 500;">
-          <input id="toggleSpatialMetrics" type="checkbox" checked> <span>🎯 Pusat & Radius Dispersi</span>
+
+        <!-- Pusat Sebaran -->
+        <label class="toggle-label">
+          <input id="toggleSpatialMetrics" type="checkbox" checked>
+          <span>Pusat &amp; Radius Dispersi</span>
         </label>
         
-        <div style="display: flex; align-items: center; justify-content: space-between; margin-top: 4px;">
-          <span style="font-weight: 500; color: #334155;">Simulasi Jangkauan:</span>
-          <select id="radiusFilter" style="padding: 2px 4px; font-size: 11px; width: auto; border: 1px solid #cbd5e1; border-radius: 4px;">
-            <option value="0">Off</option>
+        <!-- Simulasi Jangkauan -->
+        <div class="toggle-row">
+          <label for="radiusFilter" class="toggle-label" style="margin: 0;">
+            <span>Simulasi Jangkauan:</span>
+          </label>
+          <select id="radiusFilter" class="controls-select" style="width: auto; padding: 4px 8px; font-size: 11px;" aria-label="Pilih Radius Jangkauan">
+            <option value="0">Nonaktif</option>
             <option value="50">50m</option>
             <option value="100">100m</option>
             <option value="150">150m</option>
           </select>
         </div>
       </div>
-    </div>
-    <div class="legend">
-      <span><i class="dot ok"></i>Downloaded</span>
-      <span><i class="dot missing"></i>Missing</span>
+
+      <!-- Empty State Container -->
+      <div id="emptyStateNotice" class="empty-state-card" style="display: none;">
+        <span>Tidak ada kamera CCTV yang cocok dengan filter saat ini.</span>
+        <button id="emptyResetBtn" class="preset-chip">Reset Filter</button>
+      </div>
     </div>
   </section>
 
-  <!-- Tombol Toggle Statistik (Muncul jika panel stats ditutup) -->
-  <button id="toggleStatsBtn" class="stats-toggle-btn" style="display: none;">
-    📊 Analisis Distribusi
-  </button>
-
   <!-- Panel Kanan: Analisis Distribusi & Statistik -->
-  <section id="statsPanel" class="stats-panel">
-    <header style="display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid #e2e8f0; background: #f8fafc;">
-      <h2 style="margin: 0; font-size: 14px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 6px;">
-        📊 Analisis & Distribusi
-      </h2>
-      <button id="closeStatsBtn" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #64748b; line-height: 1;">&times;</button>
+  <section id="statsPanel" class="stats-panel" aria-label="Panel Analisis Spasial dan Distribusi">
+    <header>
+      <h2><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> Analisis &amp; Distribusi</h2>
+      <div style="display: flex; gap: 4px;">
+        <button id="refreshStatsHeaderBtn" class="panel-close-btn" type="button" aria-label="Pindai Ulang Status CCTV" title="Refresh Status CCTV"><span class="spin-icon"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg></span></button>
+        <button id="closeStatsBtn" class="panel-close-btn" type="button" aria-label="Tutup Analisis Distribusi"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      </div>
     </header>
     
-    <div style="padding: 14px; display: flex; flex-direction: column; gap: 16px; overflow-y: auto;">
+    <div class="panel-body">
       <!-- Metrik Spasial -->
       <div>
-        <h3 style="margin: 0 0 8px 0; font-size: 11px; color: #475569; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">Analisis Distribusi Spasial</h3>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-          <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 8px; border-radius: 8px;">
-            <div style="font-size: 9px; color: #64748b; font-weight: 600; text-transform: uppercase;">Pusat Rata-rata</div>
-            <div id="meanCenterVal" style="font-size: 10px; font-weight: 600; color: #0f172a; margin-top: 2px; overflow-wrap: anywhere;">-</div>
+        <div class="section-label" style="margin-bottom: 6px;">Analisis Distribusi Spasial</div>
+        <div class="stats-grid">
+          <div class="stat-tile">
+            <div class="stat-tile-label">Pusat Rata-rata</div>
+            <div id="meanCenterVal" class="stat-tile-value">-</div>
           </div>
-          <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 8px; border-radius: 8px;">
-            <div style="font-size: 9px; color: #64748b; font-weight: 600; text-transform: uppercase;">Radius Dispersi</div>
-            <div id="dispersionVal" style="font-size: 11px; font-weight: 600; color: #0f172a; margin-top: 2px;">-</div>
+          <div class="stat-tile">
+            <div class="stat-tile-label">Radius Dispersi</div>
+            <div id="dispersionVal" class="stat-tile-value">-</div>
           </div>
-          <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 8px; border-radius: 8px;">
-            <div style="font-size: 9px; color: #64748b; font-weight: 600; text-transform: uppercase;">Cakupan Area</div>
-            <div id="areaVal" style="font-size: 11px; font-weight: 600; color: #0f172a; margin-top: 2px;">-</div>
+          <div class="stat-tile">
+            <div class="stat-tile-label">Cakupan Area</div>
+            <div id="areaVal" class="stat-tile-value">-</div>
           </div>
-          <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 8px; border-radius: 8px;">
-            <div style="font-size: 9px; color: #64748b; font-weight: 600; text-transform: uppercase;">Kerapatan</div>
-            <div id="densityVal" style="font-size: 11px; font-weight: 600; color: #0f172a; margin-top: 2px;">-</div>
+          <div class="stat-tile">
+            <div class="stat-tile-label">Kerapatan</div>
+            <div id="densityVal" class="stat-tile-value">-</div>
           </div>
+        </div>
+      </div>
+
+      <!-- Analisis Klaster Persimpangan -->
+      <div style="border-top: 1px solid var(--border); padding-top: 10px;">
+        <div class="section-label" style="margin-bottom: 6px;">Analisis Klaster Persimpangan</div>
+        <div class="stats-grid">
+          <div class="stat-tile">
+            <div class="stat-tile-label">Klaster Terpantau</div>
+            <div id="isectCountVal" class="stat-tile-value">{{ intersections_count }}</div>
+          </div>
+          <div class="stat-tile">
+            <div class="stat-tile-label">Di Perempatan (&lt;100m)</div>
+            <div id="cctvInPerempatanVal" class="stat-tile-value">197 (52.5%)</div>
+          </div>
+        </div>
+        <div style="margin-top: 8px;">
+          <div class="section-label" style="margin-bottom: 6px;">Persimpangan Terpadat CCTV:</div>
+          <div id="topIntersectionsList" style="display: flex; flex-direction: column; gap: 4px;"></div>
         </div>
       </div>
       
       <!-- Chart Keaktifan -->
-      <div style="border-top: 1px solid #e2e8f0; padding-top: 12px;">
-        <h3 style="margin: 0 0 8px 0; font-size: 11px; color: #475569; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">Status Keaktifan CCTV</h3>
-        <div style="height: 120px; position: relative;">
+      <div style="border-top: 1px solid var(--border); padding-top: 10px;">
+        <div class="section-label">Status Keaktifan CCTV</div>
+        <div style="height: 120px; position: relative;" role="region" aria-label="Diagram status keaktifan CCTV">
           <canvas id="statusChart"></canvas>
         </div>
       </div>
 
       <!-- Chart Provider -->
-      <div style="border-top: 1px solid #e2e8f0; padding-top: 12px;">
-        <h3 style="margin: 0 0 8px 0; font-size: 11px; color: #475569; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">Distribusi Provider (Top 5)</h3>
-        <div style="height: 150px; position: relative;">
+      <div style="border-top: 1px solid var(--border); padding-top: 10px;">
+        <div class="section-label">Distribusi Provider (Top 5)</div>
+        <div style="height: 140px; position: relative;" role="region" aria-label="Diagram distribusi provider CCTV">
           <canvas id="providerChart"></canvas>
         </div>
       </div>
 
       <!-- Chart Area -->
-      <div style="border-top: 1px solid #e2e8f0; padding-top: 12px;">
-        <h3 style="margin: 0 0 8px 0; font-size: 11px; color: #475569; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;">Daerah Terbanyak (Top 5)</h3>
-        <div style="height: 150px; position: relative;">
+      <div style="border-top: 1px solid var(--border); padding-top: 10px;">
+        <div class="section-label">Daerah Terbanyak (Top 5)</div>
+        <div style="height: 140px; position: relative;" role="region" aria-label="Diagram daerah CCTV terbanyak">
           <canvas id="areaChart"></canvas>
         </div>
+      </div>
+
+      <!-- Chart Insight: Keandalan Provider (Online vs Offline) -->
+      <div style="border-top: 1px solid var(--border); padding-top: 10px;">
+        <div class="section-label">Keandalan Provider</div>
+        <div style="font-size: 10px; color: var(--muted-2); margin: 2px 0 6px;">Rasio online per provider &mdash; provider dengan banyak kamera offline kurang dapat diandalkan</div>
+        <div style="height: 160px; position: relative;" role="region" aria-label="Diagram keandalan provider CCTV">
+          <canvas id="reliabilityChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Insight: Koridor dengan Cakupan bermasalah -->
+      <div style="border-top: 1px solid var(--border); padding-top: 10px;">
+        <div class="section-label">Koridor Kurang Terpantau</div>
+        <div style="font-size: 10px; color: var(--muted-2); margin: 2px 0 6px;">Ruas dengan kamera offline &mdash; kandidat prioritas perbaikan</div>
+        <div id="corridorInsightList" style="display: flex; flex-direction: column; gap: 4px;"></div>
       </div>
     </div>
   </section>
 
+  <!-- ==========================================
+       MODAL 1: CCTV WALL / KORIDOR MULTI-GRID
+       ========================================== -->
+  <div id="cctvWallModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="cctvWallTitle">
+    <div class="modal-window" style="width: min(1280px, 96vw);">
+      <header class="modal-header">
+        <h3 id="cctvWallTitle"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="2"/><line x1="12" y1="2" x2="12" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/></svg> CCTV Wall Multi-Grid Koridor Jalan</h3>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <!-- Corridor Selector -->
+          <label for="wallCorridorSelect" class="sr-only">Pilih Koridor</label>
+          <select id="wallCorridorSelect" class="controls-select" style="width: auto; padding: 4px 10px; font-size: 11px; font-weight: 600;">
+            <option value="koridor_asia_afrika">Koridor 1: Asia Afrika - Sudirman</option>
+            <option value="koridor_dago_merdeka">Koridor 2: Dago - Merdeka</option>
+            <option value="koridor_pasteur_surapati">Koridor 3: Pasteur - Pasupati</option>
+            <option value="koridor_soekarno_hatta">Koridor 4: Soekarno-Hatta (Bypass)</option>
+            <option value="koridor_buah_batu">Koridor 5: Buah Batu - Kordon</option>
+            <option value="koridor_cihampelas_setiabudi">Koridor 6: Cihampelas - Setiabudi</option>
+            <option value="koridor_riau_laswi">Koridor 7: Riau - Laswi</option>
+          </select>
+
+          <!-- Layout Selector -->
+          <div style="display: flex; gap: 2px; background: var(--surface-lowest); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 2px;">
+            <button id="grid2x2Btn" class="preset-chip active" style="padding: 3px 8px; font-size: 10px;" title="Grid 2x2 (4 Kamera)">2×2</button>
+            <button id="grid3x3Btn" class="preset-chip" style="padding: 3px 8px; font-size: 10px;" title="Grid 3x3 (9 Kamera)">3×3</button>
+            <button id="grid1x4Btn" class="preset-chip" style="padding: 3px 8px; font-size: 10px;" title="Grid 1x4 (Horizontal Bar)">1×4</button>
+          </div>
+
+          <button id="closeCctvWallBtn" class="panel-close-btn" aria-label="Tutup CCTV Wall"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        </div>
+      </header>
+
+      <div class="modal-body">
+        <div id="wallCorridorDesc" style="font-size: 11px; color: var(--muted-2); display: flex; align-items: center; justify-content: space-between;">
+          <span id="wallCorridorInfo">Memuat koridor...</span>
+          <span id="wallCameraCountBadge" class="badge-count">0 Kamera</span>
+        </div>
+
+        <div id="cctvWallGridContainer" class="cctv-wall-grid grid-2x2">
+          <!-- Live cards injected dynamically via JS -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       MODAL 2: PERINGATAN DINI CUACA & BANJIR
+       ========================================== -->
+  <div id="floodRiskModal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="floodRiskTitle">
+    <div class="modal-window" style="width: min(800px, 94vw);">
+      <header class="modal-header">
+        <h3 id="floodRiskTitle"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="16" y1="13" x2="16" y2="21"/><line x1="8" y1="13" x2="8" y2="21"/><line x1="12" y1="15" x2="12" y2="23"/><path d="M20 16.58A5 5 0 0 0 18 7h-1.26A8 8 0 1 0 4 15.25"/></svg> Pemantauan Titik Rawan Banjir &amp; Cuaca</h3>
+        <button id="closeFloodRiskBtn" class="panel-close-btn" aria-label="Tutup Pemantauan Banjir"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      </header>
+
+      <div class="modal-body">
+        <div style="font-size: 12px; color: var(--muted-2); line-height: 1.4;">
+          Sistem korelasi radar presipitasi OpenWeatherMap dan pantauan visual CCTV pada 5 saluran drainase &amp; titik genangan kritis Kota Bandung.
+        </div>
+
+        <div id="floodHotspotsContainer" style="display: flex; flex-direction: column; gap: 8px;">
+          <!-- Injected dynamically via JS -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Leaflet & Script Logic -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4/dist/maplibre-gl.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@maplibre/maplibre-gl-leaflet@0.1.4/leaflet-maplibre-gl.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.heat/0.2.0/leaflet-heat.js"></script>
   <script>
     const CCTV_MARKERS = {{ marker_json | safe }};
-    const map = L.map("map").setView([-6.9175, 107.6191], 12);
+    let catalogVersion = {{ catalog_version }};
+    const INTERSECTIONS = {{ intersections_json | safe }};
+    const isMobile = window.innerWidth < 768;
 
-    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png", {
-      maxZoom: 19,
-      subdomains: "abcd",
+    // ===== Tema Gelap / Terang =====
+    const themeToggleBtn = document.getElementById("themeToggleBtn");
+    const CARTO_API_KEY = "cb1_2ew3_1_dbbdad4a42a2c9c38df8da88";
+    const DARK_TILE_STYLE = `https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json?key=${CARTO_API_KEY}`;
+    const LIGHT_TILE_STYLE = `https://basemaps.cartocdn.com/gl/positron-gl-style/style.json?key=${CARTO_API_KEY}`;
+    let baseTileLayer = null;
+
+    function isDarkTheme() {
+      return document.documentElement.getAttribute("data-theme") === "dark";
+    }
+
+    function applyTheme(theme, animateTiles = false) {
+      const dark = theme === "dark";
+      document.documentElement.setAttribute("data-theme", theme);
+      localStorage.setItem("cctv-theme", theme);
+      // Icon is swapped via CSS rules
+      if (baseTileLayer) {
+        map.removeLayer(baseTileLayer);
+        baseTileLayer = L.maplibreGL({
+          style: dark ? DARK_TILE_STYLE : LIGHT_TILE_STYLE,
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+        }).addTo(map);
+      }
+      updateChartTheme();
+    }
+
+    if (themeToggleBtn) {
+      themeToggleBtn.addEventListener("click", () => {
+        applyTheme(isDarkTheme() ? "light" : "dark");
+      });
+    }
+
+    // Terapkan tema tersimpan atau ikuti preferensi sistem
+    const savedTheme = localStorage.getItem("cctv-theme");
+    document.documentElement.setAttribute("data-theme", savedTheme || "dark");
+
+    function getComputedVar(name) {
+      return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    }
+
+    function updateChartTheme() {
+      const successColor = getComputedVar("--success");
+      const dangerColor = getComputedVar("--danger");
+      const accentColor = getComputedVar("--accent");
+      const panelBgSoft = getComputedVar("--panel-bg-soft") || "#151f32";
+      const gridColor = getComputedVar("--chart-grid");
+      const tickColor = getComputedVar("--muted-2");
+
+      if (statusChartInstance) {
+        statusChartInstance.data.datasets[0].backgroundColor = [successColor, dangerColor];
+        statusChartInstance.data.datasets[0].borderColor = panelBgSoft;
+      }
+      if (providerChartInstance) {
+        providerChartInstance.data.datasets[0].backgroundColor = accentColor;
+      }
+      if (areaChartInstance) {
+        areaChartInstance.data.datasets[0].backgroundColor = accentColor;
+      }
+      if (reliabilityChartInstance) {
+        reliabilityChartInstance.data.datasets[0].backgroundColor = successColor;
+        reliabilityChartInstance.data.datasets[1].backgroundColor = dangerColor;
+      }
+
+      [statusChartInstance, providerChartInstance, areaChartInstance, reliabilityChartInstance].forEach(chart => {
+        if (!chart) return;
+        Object.values(chart.options.scales || {}).forEach(scale => {
+          if (scale.ticks) scale.ticks.color = tickColor;
+          if (scale.grid) scale.grid.color = gridColor;
+        });
+        if (chart.options.plugins && chart.options.plugins.legend &&
+            chart.options.plugins.legend.labels) {
+          chart.options.plugins.legend.labels.color = tickColor;
+        }
+        chart.update();
+      });
+    }
+
+    // Inisialisasi Peta
+    const map = L.map("map", {
+      zoomControl: true,
+      preferCanvas: true
+    }).setView([-6.9175, 107.6191], 12);
+
+    baseTileLayer = L.maplibreGL({
+      style: isDarkTheme() ? DARK_TILE_STYLE : LIGHT_TILE_STYLE,
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
     }).addTo(map);
 
-    // Coordinate Hover Display
-    const coordControl = L.control({position: 'bottomleft'});
-    coordControl.onAdd = function(map) {
-      this._div = L.DomUtil.create('div', 'coord-display');
-      this._div.style.backgroundColor = 'rgba(255, 255, 255, 0.85)';
-      this._div.style.padding = '4px 8px';
-      this._div.style.fontSize = '12px';
-      this._div.style.fontWeight = '600';
-      this._div.style.color = '#334155';
-      this._div.style.borderRadius = '4px';
-      this._div.style.boxShadow = '0 1px 5px rgba(0,0,0,0.2)';
-      this._div.style.pointerEvents = 'none';
-      this._div.innerHTML = 'Hover on map for coordinates';
-      return this._div;
+    // Posisi Kontrol Zoom ke kanan bawah agar tidak tertabrak panel
+    map.zoomControl.setPosition('bottomright');
+
+    // Display Koordinat Kursor di Kiri Bawah
+    let currentHoverCoord = { lat: -6.9175, lng: 107.6191 };
+    const coordControl = L.control({ position: 'bottomleft' });
+    coordControl.onAdd = function() {
+      const div = L.DomUtil.create('div', 'coord-display');
+      div.innerHTML = `
+        <span class="legend-indicator"><span class="point-dot live"></span> Terunduh (Aktif)</span>
+        <span class="legend-indicator"><span class="point-dot offline"></span> Belum Terunduh</span>
+        <span id="coordText" class="coord-sep">Lat: -6.91750 | Lng: 107.61910</span>
+        <button id="copyCoordBtn" class="copy-coord-btn" type="button" title="Salin Koordinat">Salin</button>
+      `;
+      L.DomEvent.disableClickPropagation(div);
+      return div;
     };
     coordControl.addTo(map);
 
     map.on('mousemove', function(e) {
-      if(coordControl._div) {
-        coordControl._div.innerHTML = `Lat: ${e.latlng.lat.toFixed(5)} | Lng: ${e.latlng.lng.toFixed(5)}`;
+      currentHoverCoord = e.latlng;
+      const coordSpan = document.getElementById("coordText");
+      if (coordSpan) {
+        let text = `Lat: ${e.latlng.lat.toFixed(5)} | Lng: ${e.latlng.lng.toFixed(5)}`;
+        if (elevationOverlay) {
+          const elev = gridValueAt(elevationGrid, elevationGrid.elevations, e.latlng.lat, e.latlng.lng);
+          text += (elev === null) ? ' | Elev: --' : ` | Elev: ${elev} m`;
+        }
+        if (temperatureOverlay) {
+          const t = gridValueAt(temperatureGrid, temperatureGrid.frames[temperatureFrame], e.latlng.lat, e.latlng.lng);
+          text += (t === null) ? ' | Suhu: --' : ` | Suhu: ${t.toFixed(1)} °C`;
+        }
+        coordSpan.textContent = text;
       }
     });
 
+    // Event Salin Koordinat
+    document.addEventListener('click', function(e) {
+      if (e.target && e.target.id === 'copyCoordBtn') {
+        const text = `${currentHoverCoord.lat.toFixed(5)}, ${currentHoverCoord.lng.toFixed(5)}`;
+        navigator.clipboard.writeText(text).then(() => {
+          e.target.textContent = 'Tersalin!';
+          setTimeout(() => { e.target.textContent = 'Salin'; }, 1500);
+        }).catch(() => {
+          prompt("Salin koordinat:", text);
+        });
+      }
+    });
+
+    // Icon Marker Standar Halus
     function markerIcon(downloaded) {
-      const color = downloaded === "YES" ? "#1f8f4d" : "#c74343";
+      const color = downloaded === "YES" ? "var(--success)" : "var(--danger)";
       return L.divIcon({
-        className: "",
+        className: "custom-pin",
         html: `<div style="
-          width: 14px;
-          height: 14px;
+          width: 10px;
+          height: 10px;
           border-radius: 50%;
           background: ${color};
-          border: 2px solid white;
-          box-shadow: 0 1px 7px rgba(0,0,0,.35);
+          border: 1.5px solid var(--bg);
+          box-shadow: 0 0 6px ${color};
         "></div>`,
-        iconSize: [18, 18],
-        iconAnchor: [9, 9]
+        iconSize: [14, 14],
+        iconAnchor: [7, 7]
       });
     }
 
+    // Popup Content HTML
     function popupHtml(item) {
-      const sampleText = item.sampleDownloaded === "YES" ? "Downloaded" : "Missing";
+      const sampleText = item.sampleDownloaded === "YES" 
+        ? "<span style='color:var(--success); font-weight:600;'>Terunduh (Aktif)</span>" 
+        : "<span style='color:var(--danger); font-weight:600;'>Belum Terunduh</span>";
       const mapsUrl = `https://www.google.com/maps?q=${item.lat},${item.lng}`;
+      const streamSrc = item.proxyStream || item.stream;
       const streamLink = item.stream
-        ? `<a href="${item.stream}" target="_blank" rel="noopener">Stream</a>`
+        ? `<a href="${item.stream}" target="_blank" rel="noopener">Link Asli</a>`
+        : "";
+      const proxyLink = item.proxyStream
+        ? `<a href="${item.proxyStream}" target="_blank" rel="noopener">Buka Stream</a>`
         : "";
       const sampleLink = item.sampleDownloaded === "YES" && item.sampleFile
-        ? `<a href="${item.sampleFile}" target="_blank" rel="noopener">Sample File</a>`
+        ? `<a href="${item.sampleFile}" target="_blank" rel="noopener">File Sampel</a>`
         : "";
       const errorRow = item.sampleError
-        ? `<div class="popup-row"><span>Error:</span> ${item.sampleError}</div>`
+        ? `<div class="popup-row"><span>Error:</span> <span style="color:var(--danger);">${item.sampleError}</span></div>`
         : "";
-      const liveVideoPlayer = item.stream
-        ? `<div class="live-video-container" style="margin-top: 10px; border-radius: 4px; overflow: hidden; background: #000;">
-             <video class="cctv-live-player" data-stream="${item.stream}" controls autoplay muted style="width: 100%; height: auto; max-height: 180px; display: block;"></video>
+      const isectInfo = (item.intersectionName || item.perempatanName)
+        ? `<div class="popup-row" style="margin-top: 4px; border-top: 1px dashed var(--border); padding-top: 4px;">
+             <span>Persimpangan:</span>
+             <span style="font-weight: 600; color: var(--text-strong);">${item.intersectionName || item.perempatanName}</span>
+           </div>
+           <div class="popup-row">
+             <span>Jarak Simpang:</span>
+             <span>${item.intersectionDistance ? item.intersectionDistance + 'm' : '-'} (${item.within100m ? '<span style="color:var(--success); font-weight:600;">&lt;100m</span>' : '<span style="color:var(--muted-2);">&gt;100m</span>'})</span>
            </div>`
         : "";
+      const methodLabel = item.opticalFlowDetected 
+        ? `<span style="color:var(--success); font-weight:600;">Optical Flow (${Math.round((item.confidence || 0.8) * 100)}%)</span>`
+        : `<span style="color:var(--muted);">Snapping Geometri OSM</span>`;
+      const perspInfo = (item.bearing !== undefined && item.bearing !== null)
+        ? `<div class="popup-row" style="margin-top: 4px; border-top: 1px dashed var(--border); padding-top: 4px;">
+             <span>Arah Hadap:</span>
+             <b style="color: var(--text-strong);">${item.cardinal || 'Utara'} (${item.bearing}°)</b>
+           </div>
+           <div class="popup-row">
+             <span>Metode Analisis:</span>
+             ${methodLabel}
+           </div>`
+        : "";
+
+      const hasRois = item.hasRois && item.rois && item.rois.length > 0;
+      const los = item.levelOfService || {};
+      const losColor = los.color || 'var(--accent)';
+      
+      const speedTelemetryHtml = item.avgSpeedKmh 
+        ? `<div class="popup-row" style="margin-top: 4px; border-top: 1px dashed var(--border); padding-top: 4px;">
+             <span>Est. Kecepatan:</span>
+             <b style="color:${losColor};">${item.avgSpeedKmh} km/h (LOS ${los.code || 'B'}: ${los.description || 'Lancar'})</b>
+           </div>
+           <div class="popup-row">
+             <span>Arus Kendaraan:</span>
+             <span>~${item.flowPerHour || 0} kend/jam • ${item.totalVehicles || 0} unit terdeteksi</span>
+           </div>`
+        : (hasRois 
+            ? `<div class="popup-row" style="margin-top: 4px; border-top: 1px dashed var(--border); padding-top: 4px;">
+                 <span>Anotasi ROI:</span>
+                 <span style="color:var(--success); font-weight:600;">Tersedia (${item.roiCount} ROI Terkalibrasi)</span>
+               </div>`
+            : "");
+
+      const roiEncodedData = hasRois ? encodeURIComponent(JSON.stringify(item.rois)) : "";
+
+      const isKnownOffline = item.sampleDownloaded !== 'YES';
+      const liveVideoPlayer = streamSrc
+        ? `<div class="live-video-container" style="margin-top: 8px; border-radius: var(--radius-sm); overflow: hidden; background: #000000; position: relative;">
+             <video class="cctv-live-player" data-stream="${streamSrc}" data-cctv-id="${item.cctvId || ''}" data-rois="${roiEncodedData}" data-autoplay="${isKnownOffline ? '0' : '1'}" controls muted playsinline style="width: 100%; height: auto; max-height: 180px; display: block;"></video>
+             <canvas class="roi-overlay-canvas" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; display: none; z-index: 5;"></canvas>
+             <div class="weather-cls-badge" style="display: none;"></div>
+             ${isKnownOffline ? `<div class="cctv-offline-placeholder" style="position:absolute; top:0; left:0; right:0; bottom:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; background:rgba(0,0,0,0.85); color:#cbd5e1; font-size:12px; text-align:center; padding:10px; z-index:6;">
+                    <span>Kamera offline pada pemindaian terakhir</span>
+                    <button type="button" class="try-play-stream-btn inline-action-btn">Coba Putar</button>
+                  </div>` : ''}
+           </div>
+           ${hasRois ? `<button type="button" class="toggle-roi-btn inline-action-btn outline block">Toggle Overlay ROI (${item.roiCount} Lajur)</button>` : ''}`
+        : "";
+
       return `
         <div class="popup-title">${item.name}</div>
-        <div class="popup-row"><span>Provider:</span> ${item.provider || "UNKNOWN"}</div>
-        <div class="popup-row"><span>Coordinates:</span> ${item.lat}, ${item.lng}</div>
-        <div class="popup-row"><span>Sample Status:</span> ${sampleText}</div>
+        <div class="popup-row"><span>Provider:</span> ${item.provider || "DISKOMINFO"}</div>
+        <div class="popup-row"><span>Koordinat:</span> ${item.lat.toFixed(5)}, ${item.lng.toFixed(5)}</div>
+        <div class="popup-row"><span>Status:</span> ${sampleText}</div>
         ${errorRow}
+        ${isectInfo}
+        ${perspInfo}
+        ${speedTelemetryHtml}
         ${liveVideoPlayer}
         <div class="popup-links">
-          <a href="${mapsUrl}" target="_blank" rel="noopener">Open in Maps</a>
+          <a href="${mapsUrl}" target="_blank" rel="noopener">Buka di Maps</a>
+          ${proxyLink}
           ${streamLink}
           ${sampleLink}
         </div>
       `;
     }
 
+    // Layer Groups
     const markerLayer = L.layerGroup().addTo(map);
+    const intersectionLayer = L.layerGroup().addTo(map);
+    const intersectionRayGroup = L.layerGroup().addTo(map);
+    const perspectiveLayer = L.layerGroup().addTo(map);
+    let highlightedCone = null;
     let heatLayer = null;
+    let hexLayer = null;
+    let radiusLayer = L.layerGroup().addTo(map);
     let meanCenterMarker = null;
     let dispersionCircle = null;
+    const openMeteoWeatherGroup = L.layerGroup();
+    const openMeteoWindGroup = L.layerGroup();
+    const openMeteoHydroGroup = L.layerGroup();
+    let weatherLegendControl = null;
+    let elevationOverlay = null;
+    let elevationLegendControl = null;
+    let elevationGrid = null;       // memoized /api/elevation/grid payload
+    let temperatureOverlay = null;
+    let temperatureLegendControl = null;
+    let temperatureGrid = null;
+    let temperatureFrame = 0;
 
+    // DOM References
     const searchBox = document.getElementById("searchBox");
     const providerFilter = document.getElementById("providerFilter");
     const areaFilter = document.getElementById("areaFilter");
+    const roiFilter = document.getElementById("roiFilter");
     const sampleFilter = document.getElementById("sampleFilter");
+    const intersectionFilter = document.getElementById("intersectionFilter");
+    const cardinalFilter = document.getElementById("cardinalFilter");
     const visibleCount = document.getElementById("visibleCount");
+    const resetFiltersBtn = document.getElementById("resetFiltersBtn");
+    const emptyStateNotice = document.getElementById("emptyStateNotice");
+    const emptyResetBtn = document.getElementById("emptyResetBtn");
     
+    const togglePerspectives = document.getElementById("togglePerspectives");
+    const toggleIntersections = document.getElementById("toggleIntersections");
     const toggleWeather = document.getElementById("toggleWeather");
+    const toggleWind = document.getElementById("toggleWind");
+    const toggleHydrology = document.getElementById("toggleHydrology");
+    const toggleElevation = document.getElementById("toggleElevation");
+    const toggleTemperature = document.getElementById("toggleTemperature");
     const toggleHeatmap = document.getElementById("toggleHeatmap");
     const hexbinFilter = document.getElementById("hexbinFilter");
     const toggleSpatialMetrics = document.getElementById("toggleSpatialMetrics");
     const radiusFilter = document.getElementById("radiusFilter");
 
-    let hexLayer = null;
-    let radiusLayer = L.layerGroup().addTo(map);
+    const leftPanel = document.getElementById("leftPanel");
+    const closeLeftPanelBtn = document.getElementById("closeLeftPanelBtn");
+    const toggleControlsBtn = document.getElementById("toggleControlsBtn");
 
     const statsPanel = document.getElementById("statsPanel");
-    const toggleStatsBtn = document.getElementById("toggleStatsBtn");
     const closeStatsBtn = document.getElementById("closeStatsBtn");
+    const toggleStatsBtn = document.getElementById("toggleStatsBtn");
 
-    // Chart instances
+    // Chart Instances
     let statusChartInstance = null;
     let providerChartInstance = null;
     let areaChartInstance = null;
+    let reliabilityChartInstance = null;
 
+    // Inisialisasi Dropdowns
     function populateDropdowns() {
+      const currentProvider = providerFilter.value;
+      const currentArea = areaFilter.value;
+
+      while (providerFilter.options.length > 1) {
+        providerFilter.remove(1);
+      }
+      while (areaFilter.options.length > 1) {
+        areaFilter.remove(1);
+      }
+
       const providers = new Set();
       const areas = new Set();
 
       CCTV_MARKERS.forEach(item => {
-        providers.add(item.provider || "UNKNOWN");
+        providers.add(item.provider || "DISKOMINFO");
         
         let name = item.name.toUpperCase();
         name = name.replace(/^CCTV\s+/, "");
@@ -437,7 +1879,7 @@
         if (area.length === 0) area = "LAINNYA";
         areas.add(area);
         
-        item._parsedArea = area; // Cache it for filtering
+        item._parsedArea = area;
       });
 
       Array.from(providers).sort().forEach(p => {
@@ -447,19 +1889,24 @@
       Array.from(areas).sort().forEach(a => {
         areaFilter.add(new Option(a, a));
       });
+
+      const hasProvider = Array.from(providerFilter.options).some(o => o.value === currentProvider);
+      providerFilter.value = hasProvider ? currentProvider : "ALL";
+
+      const hasArea = Array.from(areaFilter.options).some(o => o.value === currentArea);
+      areaFilter.value = hasArea ? currentArea : "ALL";
     }
 
+    // Inisialisasi Chart.js
     function initCharts() {
       const ctxStatus = document.getElementById('statusChart').getContext('2d');
       statusChartInstance = new Chart(ctxStatus, {
         type: 'doughnut',
         data: {
-          labels: ['Aktif', 'Mati / Missing'],
+          labels: ['Aktif (Terunduh)', 'Belum Terunduh'],
           datasets: [{
             data: [0, 0],
-            backgroundColor: ['#1f8f4d', '#c74343'],
-            borderWidth: 1,
-            hoverOffset: 4
+            borderWidth: 2
           }]
         },
         options: {
@@ -468,7 +1915,7 @@
           plugins: {
             legend: {
               position: 'right',
-              labels: { boxWidth: 12, font: { family: 'Inter', size: 10 } }
+              labels: { boxWidth: 10, font: { family: 'Public Sans', size: 10 } }
             }
           }
         }
@@ -481,21 +1928,18 @@
           labels: [],
           datasets: [{
             data: [],
-            backgroundColor: '#3b82f6',
-            borderRadius: 4,
-            barThickness: 12
+            borderRadius: 2,
+            barThickness: 10
           }]
         },
         options: {
           indexAxis: 'y',
           responsive: true,
           maintainAspectRatio: false,
-          plugins: {
-            legend: { display: false }
-          },
+          plugins: { legend: { display: false } },
           scales: {
-            x: { beginAtZero: true, ticks: { font: { family: 'Inter', size: 9 }, precision: 0 } },
-            y: { ticks: { font: { family: 'Inter', size: 9 } } }
+            x: { beginAtZero: true, ticks: { font: { family: 'JetBrains Mono', size: 9 }, precision: 0 } },
+            y: { ticks: { font: { family: 'JetBrains Mono', size: 9 } } }
           }
         }
       });
@@ -507,74 +1951,179 @@
           labels: [],
           datasets: [{
             data: [],
-            backgroundColor: '#8b5cf6',
-            borderRadius: 4,
-            barThickness: 12
+            borderRadius: 2,
+            barThickness: 10
           }]
         },
         options: {
           indexAxis: 'y',
           responsive: true,
           maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { beginAtZero: true, ticks: { font: { family: 'JetBrains Mono', size: 9 }, precision: 0 } },
+            y: { ticks: { font: { family: 'JetBrains Mono', size: 9 } } }
+          }
+        }
+      });
+
+      // Insight: stacked online vs offline per provider
+      const ctxReliability = document.getElementById('reliabilityChart').getContext('2d');
+      reliabilityChartInstance = new Chart(ctxReliability, {
+        type: 'bar',
+        data: {
+          labels: [],
+          datasets: [
+            {
+              label: 'Online',
+              data: [],
+              borderRadius: 2,
+              barThickness: 10
+            },
+            {
+              label: 'Offline',
+              data: [],
+              borderRadius: 2,
+              barThickness: 10
+            }
+          ]
+        },
+        options: {
+          indexAxis: 'y',
+          responsive: true,
+          maintainAspectRatio: false,
           plugins: {
-            legend: { display: false }
+            legend: {
+              labels: { boxWidth: 10, font: { family: 'Public Sans', size: 10 } }
+            }
           },
           scales: {
-            x: { beginAtZero: true, ticks: { font: { family: 'Inter', size: 9 }, precision: 0 } },
-            y: { ticks: { font: { family: 'Inter', size: 9 } } }
+            x: { stacked: true, beginAtZero: true, ticks: { font: { family: 'JetBrains Mono', size: 9 }, precision: 0 } },
+            y: { stacked: true, ticks: { font: { family: 'JetBrains Mono', size: 9 } } }
           }
         }
       });
     }
 
     function updateCharts(filtered) {
-      if (!statusChartInstance || !providerChartInstance || !areaChartInstance) return;
+      if (!statusChartInstance || !providerChartInstance || !areaChartInstance || !reliabilityChartInstance) return;
 
-      // Update Status Chart
       let activeCount = 0;
       let missingCount = 0;
+      const providerCounts = {};
+      const areaCounts = {};
+      const providerReliability = {};
+      const corridorStats = {};
+
       filtered.forEach(item => {
-        if (item.sampleDownloaded === 'YES') {
-          activeCount++;
-        } else {
-          missingCount++;
-        }
+        if (item.sampleDownloaded === 'YES') activeCount++;
+        else missingCount++;
+
+        const prov = item.provider || 'DISKOMINFO';
+        providerCounts[prov] = (providerCounts[prov] || 0) + 1;
+
+        const area = item._parsedArea || "LAINNYA";
+        areaCounts[area] = (areaCounts[area] || 0) + 1;
+
+        // Reliability aggregation per provider
+        if (!providerReliability[prov]) providerReliability[prov] = { online: 0, total: 0 };
+        providerReliability[prov].total++;
+        if (item.sampleDownloaded === 'YES') providerReliability[prov].online++;
+
+        // Corridor aggregation (reuse parsed area key as corridor proxy)
+        if (!corridorStats[area]) corridorStats[area] = { online: 0, total: 0 };
+        corridorStats[area].total++;
+        if (item.sampleDownloaded === 'YES') corridorStats[area].online++;
       });
+
+      const hdrOnline = document.getElementById('hdrOnlineCount');
+      const hdrOffline = document.getElementById('hdrOfflineCount');
+      if (hdrOnline) hdrOnline.textContent = activeCount;
+      if (hdrOffline) hdrOffline.textContent = missingCount;
       statusChartInstance.data.datasets[0].data = [activeCount, missingCount];
       statusChartInstance.update();
 
-      // Update Provider & Area Charts
-      const providerCounts = {};
-      const areaCounts = {};
-
-      filtered.forEach(item => {
-        const prov = item.provider || 'UNKNOWN';
-        providerCounts[prov] = (providerCounts[prov] || 0) + 1;
-
-        let name = item.name.toUpperCase();
-        name = name.replace(/^CCTV\s+/, "");
-        name = name.replace(/^(TB\s+JL[\.\s]*|TB\s+|JL[\.\s]*|DEPAN\s+)/, "");
-        const match = name.match(/^[A-Z\s]+/);
-        let area = match ? match[0].trim() : name;
-        if (area.length === 0) area = "LAINNYA";
-        areaCounts[area] = (areaCounts[area] || 0) + 1;
-      });
-
-      const sortedProviders = Object.entries(providerCounts)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 5);
-
-      providerChartInstance.data.labels = sortedProviders.map(entry => entry[0]);
-      providerChartInstance.data.datasets[0].data = sortedProviders.map(entry => entry[1]);
+      const sortedProviders = Object.entries(providerCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+      providerChartInstance.data.labels = sortedProviders.map(e => e[0]);
+      providerChartInstance.data.datasets[0].data = sortedProviders.map(e => e[1]);
       providerChartInstance.update();
 
-      const sortedAreas = Object.entries(areaCounts)
-        .sort((a, b) => b[1] - a[1])
-        .slice(0, 5);
-      
-      areaChartInstance.data.labels = sortedAreas.map(entry => entry[0]);
-      areaChartInstance.data.datasets[0].data = sortedAreas.map(entry => entry[1]);
+      const sortedAreas = Object.entries(areaCounts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+      areaChartInstance.data.labels = sortedAreas.map(e => e[0]);
+      areaChartInstance.data.datasets[0].data = sortedAreas.map(e => e[1]);
       areaChartInstance.update();
+
+      // Insight chart: reliability per provider (sorted by total desc)
+      const relEntries = Object.entries(providerReliability)
+        .sort((a, b) => b[1].total - a[1].total)
+        .slice(0, 7);
+      reliabilityChartInstance.data.labels = relEntries.map(e => e[0]);
+      reliabilityChartInstance.data.datasets[0].data = relEntries.map(e => e[1].online);
+      reliabilityChartInstance.data.datasets[1].data = relEntries.map(e => e[1].total - e[1].online);
+      reliabilityChartInstance.update();
+
+      // Insight list: corridors (areas) with offline cameras, worst first
+      const corridorList = document.getElementById('corridorInsightList');
+      if (corridorList) {
+        const problematic = Object.entries(corridorStats)
+          .filter(([_, s]) => s.online < s.total)
+          .map(([name, s]) => ({
+            name,
+            total: s.total,
+            offline: s.total - s.online,
+            rate: Math.round((s.online / s.total) * 100)
+          }))
+          .sort((a, b) => b.offline - a.offline)
+          .slice(0, 6);
+        if (problematic.length === 0) {
+          corridorList.innerHTML = '<div style="font-size: 11px; color: var(--success);">Semua koridor dalam cakupan penuh ✓</div>';
+        } else {
+          corridorList.innerHTML = problematic.map((c, i) => `
+            <div class="corridor-row" style="--stagger: ${i * 45}ms; display: flex; align-items: center; justify-content: space-between; font-size: 11px; padding: 4px 6px; background: var(--danger-soft); border-radius: var(--radius-sm);">
+              <span style="font-weight: 600; color: var(--text-strong); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 60%;">${c.name}</span>
+              <span style="color: var(--danger); font-weight: 600; white-space: nowrap;">${c.offline}/${c.total} offline (${c.rate}% online)</span>
+            </div>
+          `).join('');
+        }
+      }
+    }
+
+    // Animated numeric counter for stat tiles (respects reduced motion)
+    const REDUCED_MOTION = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    function animateStatValue(el, targetText) {
+      if (!el) return;
+      const numMatch = targetText.match(/^([\d.,]+)\s*(.*)$/);
+      if (!numMatch || REDUCED_MOTION) {
+        el.textContent = targetText;
+        return;
+      }
+      const target = parseFloat(numMatch[1].replace(/,/g, ''));
+      if (isNaN(target) || target === 0) {
+        el.textContent = targetText;
+        return;
+      }
+      const suffix = numMatch[2] ? ' ' + numMatch[2] : '';
+      const decimals = (numMatch[1].split('.')[1] || '').length;
+      const startVal = parseFloat((el.textContent || '0').replace(/[^\d.-]/g, '')) || 0;
+      if (Math.abs(target - startVal) < Math.max(0.001, target * 0.001)) {
+        el.textContent = targetText;
+        return;
+      }
+      const duration = 500;
+      const t0 = performance.now();
+      function frame(t) {
+        const p = Math.min(1, (t - t0) / duration);
+        const eased = 1 - Math.pow(1 - p, 3); // ease-out cubic
+        const val = startVal + (target - startVal) * eased;
+        el.textContent = val.toFixed(decimals) + suffix;
+        if (p < 1) requestAnimationFrame(frame);
+      }
+      requestAnimationFrame(frame);
+      // brief color flash to mark the change
+      el.classList.remove('stat-value-flash');
+      void el.offsetWidth; // restart animation
+      el.classList.add('stat-value-flash');
     }
 
     function updateSpatialAnalysis(filtered) {
@@ -597,10 +2146,9 @@
       });
       const meanLat = sumLat / filtered.length;
       const meanLng = sumLng / filtered.length;
-
       document.getElementById('meanCenterVal').textContent = `${meanLat.toFixed(5)}, ${meanLng.toFixed(5)}`;
 
-      // 2. Standard Distance (Dispersion in meters)
+      // 2. Standard Distance (Dispersion)
       let sumMetersSq = 0;
       filtered.forEach(item => {
         const dyMeters = (item.lat - meanLat) * 111320;
@@ -608,7 +2156,7 @@
         sumMetersSq += (dxMeters * dxMeters + dyMeters * dyMeters);
       });
       const stdDistanceMeters = Math.sqrt(sumMetersSq / filtered.length);
-      document.getElementById('dispersionVal').textContent = `${(stdDistanceMeters / 1000).toFixed(2)} km`;
+      animateStatValue(document.getElementById('dispersionVal'), `${(stdDistanceMeters / 1000).toFixed(2)} km`);
 
       // 3. Bounding Box Area
       let minLat = Infinity, maxLat = -Infinity;
@@ -622,13 +2170,13 @@
       const heightKm = (maxLat - minLat) * 111.32;
       const widthKm = (maxLng - minLng) * 111.32 * Math.cos(((minLat + maxLat) / 2) * Math.PI / 180);
       const areaSqKm = Math.max(0.001, heightKm * widthKm);
-      document.getElementById('areaVal').textContent = `${areaSqKm.toFixed(2)} km²`;
+      animateStatValue(document.getElementById('areaVal'), `${areaSqKm.toFixed(2)} km²`);
 
       // 4. Density
       const density = filtered.length / areaSqKm;
-      document.getElementById('densityVal').textContent = `${density.toFixed(2)} cam/km²`;
+      animateStatValue(document.getElementById('densityVal'), `${density.toFixed(2)} cam/km²`);
 
-      // Draw/Update Map Overlays
+      // Update Map Overlays
       if (meanCenterMarker) { map.removeLayer(meanCenterMarker); meanCenterMarker = null; }
       if (dispersionCircle) { map.removeLayer(dispersionCircle); dispersionCircle = null; }
 
@@ -638,13 +2186,13 @@
           html: `<div style="
             width: 24px;
             height: 24px;
-            background: #f1c40f;
-            border: 2px solid #d35400;
-            border-radius: 50%;
+            background: var(--warning);
+            border: 1.5px solid var(--bg);
+            border-radius: var(--radius-sm);
             display: flex;
             align-items: center;
             justify-content: center;
-            box-shadow: 0 0 12px rgba(241, 196, 15, 0.9);
+            box-shadow: 0 0 8px var(--warning);
             font-size: 12px;
             cursor: pointer;
           ">⭐</div>`,
@@ -654,9 +2202,9 @@
 
         meanCenterMarker = L.marker([meanLat, meanLng], { icon: meanCenterIcon })
           .bindPopup(`
-            <div style="font-weight: bold; font-size: 13px; margin-bottom: 4px;">Pusat Rata-rata (Mean Center)</div>
-            <div style="font-size: 12px; color: #334155; line-height: 1.4;">
-              Titik pusat koordinat sebaran CCTV saat ini.<br>
+            <div style="font-weight: bold; font-size: 13px; margin-bottom: 4px; color:var(--text-strong);">Pusat Rata-rata (Mean Center)</div>
+            <div style="font-size: 12px; color: var(--muted); line-height: 1.4;">
+              Titik pusat koordinat sebaran CCTV terpilih.<br>
               <b>Koordinat:</b> ${meanLat.toFixed(5)}, ${meanLng.toFixed(5)}
             </div>
           `)
@@ -664,8 +2212,8 @@
 
         dispersionCircle = L.circle([meanLat, meanLng], {
           radius: stdDistanceMeters,
-          color: '#3b82f6',
-          fillColor: '#3b82f6',
+          color: '#38bdf8',
+          fillColor: '#38bdf8',
           fillOpacity: 0.08,
           dashArray: '6, 6',
           weight: 2
@@ -673,41 +2221,93 @@
       }
     }
 
-    function renderMarkers() {
+    // Helper: Buat Geometri Poligon Vision Cone (FOV Wedge)
+    function generateVisionConePolygon(lat, lng, bearingDeg, fovDeg = 60, radiusMeters = 55) {
+      const points = [[lat, lng]];
+      const halfFov = fovDeg / 2;
+      const startAngle = bearingDeg - halfFov;
+      const endAngle = bearingDeg + halfFov;
+      const step = 5;
+
+      for (let a = startAngle; a <= endAngle; a += step) {
+        const rad = a * Math.PI / 180;
+        const dLat = (radiusMeters * Math.cos(rad)) / 111320;
+        const dLng = (radiusMeters * Math.sin(rad)) / (111320 * Math.cos(lat * Math.PI / 180));
+        points.push([lat + dLat, lng + dLng]);
+      }
+      points.push([lat, lng]);
+      return points;
+    }
+
+    // Render Lapisan Vision Cones (Perspektif Kamera)
+    function renderPerspectives(filteredMarkers) {
+      perspectiveLayer.clearLayers();
+      if (!togglePerspectives || !togglePerspectives.checked) return;
+
+      filteredMarkers.forEach(item => {
+        if (item.bearing !== undefined && item.bearing !== null) {
+          const coneCoords = generateVisionConePolygon(item.lat, item.lng, item.bearing, item.fov || 60, 50);
+          L.polygon(coneCoords, {
+            color: '#38bdf8',
+            fillColor: '#38bdf8',
+            fillOpacity: 0.2,
+            weight: 1.2,
+            dashArray: '3, 3'
+          }).bindTooltip(`${item.name}: ${item.cardinal || 'Utara'} (${item.bearing}°)`, { direction: 'top' })
+            .addTo(perspectiveLayer);
+        }
+      });
+    }
+
+    // Render Markers dengan Flag shouldAutoZoom
+    function renderMarkers(shouldAutoZoom = false) {
       const query = searchBox.value.trim().toLowerCase();
       const status = sampleFilter.value;
       const prov = providerFilter.value;
       const areaVal = areaFilter.value;
+      const roiFilterVal = roiFilter ? roiFilter.value : "ALL";
+      const isectFilterVal = intersectionFilter ? intersectionFilter.value : "ALL";
+      const cardinalVal = cardinalFilter ? cardinalFilter.value : "ALL";
       const radiusVal = parseInt(radiusFilter.value, 10);
       const hexbinVal = parseInt(hexbinFilter.value, 10);
       
       markerLayer.clearLayers();
       radiusLayer.clearLayers();
-      if (heatLayer) {
-        map.removeLayer(heatLayer);
-        heatLayer = null;
-      }
-      if (hexLayer) {
-        map.removeLayer(hexLayer);
-        hexLayer = null;
-      }
+      if (heatLayer) { map.removeLayer(heatLayer); heatLayer = null; }
+      if (hexLayer) { map.removeLayer(hexLayer); hexLayer = null; }
 
       const bounds = [];
       const filtered = [];
 
       CCTV_MARKERS.forEach((item) => {
-        const searchable = `${item.name} ${item.provider}`.toLowerCase();
+        const searchable = `${item.name} ${item.provider} ${item.intersectionName || ''} ${item.intersectingRoads || ''} ${item.perempatanName || ''} ${item.cardinal || ''}`.toLowerCase();
         const matchesQuery = !query || searchable.includes(query);
         const matchesStatus = status === "ALL" || item.sampleDownloaded === status;
-        const matchesProv = prov === "ALL" || (item.provider || "UNKNOWN") === prov;
+        const matchesProv = prov === "ALL" || (item.provider || "DISKOMINFO") === prov;
         const matchesArea = areaVal === "ALL" || item._parsedArea === areaVal;
+        const matchesCardinal = cardinalVal === "ALL" || (item.cardinal || "") === cardinalVal;
         
-        if (!matchesQuery || !matchesStatus || !matchesProv || !matchesArea) return;
+        let matchesRoi = true;
+        if (roiFilterVal === "WITH_ROI") {
+          matchesRoi = item.hasRois === true;
+        } else if (roiFilterVal === "WITHOUT_ROI") {
+          matchesRoi = item.hasRois !== true;
+        }
+
+        let matchesIsect = true;
+        if (isectFilterVal === "WITHIN_100_PEREMPATAN") {
+          matchesIsect = item.within100mPerempatan === true;
+        } else if (isectFilterVal === "WITHIN_100_ALL") {
+          matchesIsect = item.within100m === true;
+        } else if (isectFilterVal === "OUTSIDE_100") {
+          matchesIsect = item.within100m !== true;
+        }
+
+        if (!matchesQuery || !matchesStatus || !matchesProv || !matchesArea || !matchesIsect || !matchesCardinal || !matchesRoi) return;
 
         filtered.push(item);
         bounds.push([item.lat, item.lng]);
         
-        // Render Radius
         if (radiusVal > 0 && hexbinVal === 0 && !toggleHeatmap.checked) {
           L.circle([item.lat, item.lng], {
             radius: radiusVal,
@@ -720,15 +2320,16 @@
       });
 
       visibleCount.textContent = filtered.length;
+      if (emptyStateNotice) {
+        emptyStateNotice.style.display = filtered.length === 0 ? 'flex' : 'none';
+      }
 
       if (hexbinVal > 0 && filtered.length > 0) {
-        // Render Square Grid view
         const points = turf.featureCollection(filtered.map(item => turf.point([item.lng, item.lat])));
         const bbox = turf.bbox(points);
-        const cellSide = hexbinVal === 1 ? 1.0 : 1.4142; // 1 KM² = 1.0 side, 2 KM² = sqrt(2) side
-        const squaregrid = turf.squareGrid(bbox, cellSide, {units: 'kilometers'});
+        const cellSide = hexbinVal === 1 ? 1.0 : 1.4142;
+        const squaregrid = turf.squareGrid(bbox, cellSide, { units: 'kilometers' });
         
-        // Count points in each square
         const gridbins = [];
         let maxCount = 0;
         turf.featureEach(squaregrid, function (currentFeature) {
@@ -745,23 +2346,21 @@
           style: function (feature) {
             const count = feature.properties.count;
             const intensity = count / maxCount;
-            // Color scale from yellow to dark red
-            const r = Math.floor(255);
+            const r = 255;
             const g = Math.floor(255 * (1 - intensity));
             const b = 0;
             return {
               fillColor: `rgb(${r},${g},${b})`,
               weight: 1,
               color: 'white',
-              fillOpacity: 0.7
+              fillOpacity: 0.65
             };
           },
           onEachFeature: function(feature, layer) {
-            layer.bindPopup(`<div style="font-size:12px; font-weight:600; text-align:center; margin-bottom: 4px; color:#64748b;">Luas Area: ~${hexbinVal} KM²</div><div style="font-size:12px; font-weight:600; text-align:center;">Kepadatan:<br><span style="font-size:16px; color:#c74343;">${feature.properties.count}</span> CCTV</div>`);
+            layer.bindPopup(`<div style="font-size:12px; font-weight:600; text-align:center; color:var(--muted-2);">Luas Area: ~${hexbinVal} KM²</div><div style="font-size:13px; font-weight:700; text-align:center; margin-top:2px;">Kepadatan: <span style="color:var(--danger);">${feature.properties.count}</span> Kamera</div>`);
           }
         }).addTo(map);
       } else if (toggleHeatmap.checked) {
-        // Render Heatmap view
         const heatPoints = filtered.map(item => [item.lat, item.lng, 1.0]);
         heatLayer = L.heatLayer(heatPoints, {
           radius: 25,
@@ -769,159 +2368,1557 @@
           maxZoom: 15
         }).addTo(map);
       } else {
-        // Render Marker view
         filtered.forEach((item) => {
-          L.marker([item.lat, item.lng], { icon: markerIcon(item.sampleDownloaded) })
-            .bindPopup(popupHtml(item))
-            .addTo(markerLayer);
+          const marker = L.marker([item.lat, item.lng], { icon: markerIcon(item.sampleDownloaded) })
+            .bindPopup(popupHtml(item));
+          
+          marker.on('click', () => {
+            if (highlightedCone) { map.removeLayer(highlightedCone); highlightedCone = null; }
+            if (item.bearing !== undefined && item.bearing !== null) {
+              const coneCoords = generateVisionConePolygon(item.lat, item.lng, item.bearing, item.fov || 60, 75);
+              highlightedCone = L.polygon(coneCoords, {
+                color: '#f59e0b',
+                fillColor: '#f59e0b',
+                fillOpacity: 0.35,
+                weight: 2
+              }).addTo(map);
+            }
+          });
+
+          marker.addTo(markerLayer);
         });
       }
 
+      renderPerspectives(filtered);
       updateSpatialAnalysis(filtered);
       updateCharts(filtered);
 
-      if (bounds.length) {
+      if (shouldAutoZoom && bounds.length > 0) {
         map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
       }
     }
 
-    // Event Listeners
-    const injectedApiKey = "{{ owm_api_key }}";
-    const owmApiKeyInput = document.getElementById("owmApiKey");
-    
-    if (owmApiKeyInput) {
-      const savedKey = localStorage.getItem("owmApiKey");
-      if(savedKey) {
-        owmApiKeyInput.value = savedKey;
-      }
-      owmApiKeyInput.addEventListener("input", (e) => {
-        localStorage.setItem("owmApiKey", e.target.value);
+    // Glyph ikon sesuai tipe simpang
+    function junctionGlyph(isect) {
+      const t = (isect.type || '').toLowerCase();
+      if (t.includes('3-way') || t.includes('pertigaan')) return '🔱';   // Pertigaan
+      if (t.includes('6-way'))  return '✡️';
+      if (t.includes('8-way'))  return '✴️';
+      if (t.includes('5-way'))  return '✴️';
+      const m = t.match(/(\d+)-way/);
+      if (m) return String.fromCharCode(0x2460 + Math.min(parseInt(m[1], 10), 20) - 1); // ⑥ ⑦ ... angka dalam lingkaran
+      if (t.includes('perempatan') || t.includes('4-way')) return '✚';   // Perempatan
+      return '☩';                                                        // default persimpangan
+    }
+
+    // Render Lapisan Klaster Persimpangan Jalan
+    function renderIntersections() {
+      intersectionLayer.clearLayers();
+      if (!toggleIntersections.checked) return;
+
+      INTERSECTIONS.forEach(isect => {
+        const hasSignal = isect.hasTrafficSignals;
+        const iconHtml = `<div class="isect-marker-badge ${hasSignal ? 'traffic-signals' : ''}" title="${isect.name} (${isect.cctvCount} CCTV)">
+          ${hasSignal ? '🚦' : junctionGlyph(isect)}<span style="font-size: 9px; margin-left: 1px;">${isect.cctvCount}</span>
+        </div>`;
+
+        const icon = L.divIcon({
+          className: 'isect-div-icon',
+          html: iconHtml,
+          iconSize: [24, 24],
+          iconAnchor: [12, 12]
+        });
+
+        const marker = L.marker([isect.lat, isect.lng], { icon: icon });
+
+        const cctvListHtml = isect.cctvNames.map(name => {
+          return `<div style="display: flex; align-items: center; justify-content: space-between; padding: 4px 0; border-bottom: 1px dotted var(--border);">
+            <span style="font-size: 11px; font-weight: 500; color: var(--text); max-width: 190px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${name}</span>
+            <button type="button" class="jump-cctv-btn inline-action-btn" data-cctv-name="${name}">Lihat</button>
+          </div>`;
+        }).join('');
+
+        const popupContent = `
+          <div class="popup-title" style="color: var(--text-strong); margin-bottom: 4px;">${isect.name}</div>
+          <div class="popup-row"><span>Tipe Simpang:</span> <b>${isect.type || 'Persimpangan'}</b></div>
+          <div class="popup-row"><span>Jalan Terhubung:</span> ${isect.roads || '-'}</div>
+          <div class="popup-row"><span>Lampu Merah:</span> <b>${isect.hasTrafficSignals ? 'Ada (Traffic Light)' : 'Tidak Ada'}</b></div>
+          <div class="popup-row"><span>Jarak Rata-rata:</span> ${isect.avgDistance} meter</div>
+          <div style="margin-top: 8px; border-top: 1px solid var(--border); padding-top: 6px;">
+            <div style="font-size: 11px; font-weight: 700; color: var(--muted); margin-bottom: 4px;">CCTV Terpasang (${isect.cctvCount} kamera):</div>
+            <div style="max-height: 130px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px;">
+              ${cctvListHtml}
+            </div>
+          </div>
+        `;
+
+        marker.bindPopup(popupContent, { maxWidth: 320 });
+
+        marker.on('popupopen', () => {
+          intersectionRayGroup.clearLayers();
+          isect.cctvNames.forEach(cname => {
+            const ccam = CCTV_MARKERS.find(m => m.name === cname);
+            if (ccam) {
+              L.polyline([[isect.lat, isect.lng], [ccam.lat, ccam.lng]], {
+                color: '#f59e0b',
+                weight: 2,
+                dashArray: '5, 5',
+                opacity: 0.85
+              }).addTo(intersectionRayGroup);
+            }
+          });
+        });
+
+        marker.on('popupclose', () => {
+          intersectionRayGroup.clearLayers();
+        });
+
+        marker.addTo(intersectionLayer);
       });
     }
 
-    let weatherLayer = null;
-    toggleWeather.addEventListener("change", () => {
-      if (toggleWeather.checked) {
-        const apiKey = injectedApiKey || (owmApiKeyInput ? owmApiKeyInput.value.trim() : "");
-        if (!apiKey) {
-          alert("Silakan masukkan API Key OpenWeatherMap terlebih dahulu!");
-          toggleWeather.checked = false;
-          return;
-        }
-        weatherLayer = L.tileLayer(`https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${apiKey}`, {
-          opacity: 0.8,
-          zIndex: 100,
-          maxZoom: 19
-        }).addTo(map);
-      } else {
-        if (weatherLayer) {
-          map.removeLayer(weatherLayer);
-          weatherLayer = null;
+    // Top Intersections UI List
+    function updateTopIntersectionsUI() {
+      const container = document.getElementById('topIntersectionsList');
+      if (!container) return;
+
+      const sorted = [...INTERSECTIONS].sort((a, b) => b.cctvCount - a.cctvCount).slice(0, 5);
+      container.innerHTML = sorted.map((isect, idx) => {
+        return `
+          <div class="isect-top-item" data-isect-id="${isect.id}" data-lat="${isect.lat}" data-lng="${isect.lng}" title="Klik untuk menuju persimpangan ini">
+            <div style="display: flex; flex-direction: column; overflow: hidden; padding-right: 6px;">
+              <span style="font-weight: 600; color: var(--text-strong); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${junctionGlyph(isect)} ${idx + 1}. ${isect.name}</span>
+              <span style="font-size: 10px; color: var(--muted-2);">${isect.type} • Rata-rata ${isect.avgDistance}m</span>
+            </div>
+            <span class="badge-count">${isect.cctvCount} CAM</span>
+          </div>
+        `;
+      }).join('');
+
+      container.querySelectorAll('.isect-top-item').forEach(el => {
+        el.addEventListener('click', () => {
+          const lat = parseFloat(el.getAttribute('data-lat'));
+          const lng = parseFloat(el.getAttribute('data-lng'));
+          map.flyTo([lat, lng], 16, { duration: 0.8 });
+          
+          if (!toggleIntersections.checked) {
+            toggleIntersections.checked = true;
+            renderIntersections();
+          }
+
+          setTimeout(() => {
+            intersectionLayer.eachLayer(layer => {
+              if (layer.getLatLng && Math.abs(layer.getLatLng().lat - lat) < 0.0001 && Math.abs(layer.getLatLng().lng - lng) < 0.0001) {
+                layer.openPopup();
+              }
+            });
+          }, 850);
+        });
+      });
+    }
+
+    // Jump to CCTV Handler from Intersection Popup
+    document.addEventListener('click', function(e) {
+      if (e.target && e.target.classList.contains('jump-cctv-btn')) {
+        const cctvName = e.target.getAttribute('data-cctv-name');
+        const targetCctv = CCTV_MARKERS.find(m => m.name === cctvName);
+        if (targetCctv) {
+          map.flyTo([targetCctv.lat, targetCctv.lng], 17, { duration: 0.8 });
+          setTimeout(() => {
+            markerLayer.eachLayer(layer => {
+              if (layer.getLatLng && Math.abs(layer.getLatLng().lat - targetCctv.lat) < 0.0001 && Math.abs(layer.getLatLng().lng - targetCctv.lng) < 0.0001) {
+                layer.openPopup();
+              }
+            });
+          }, 850);
         }
       }
     });
 
-    setInterval(() => {
-      fetch('/api/status')
-        .then(res => res.json())
-        .then(data => {
-          let updated = false;
-          CCTV_MARKERS.forEach(item => {
-            if (data[item.name] && item.sampleDownloaded !== data[item.name]) {
-              item.sampleDownloaded = data[item.name];
-              updated = true;
-            }
-          });
-          if (updated) renderMarkers();
-        })
-        .catch(err => console.log('Server ping failed', err));
-    }, 30000);
+    // Debounce Helper untuk input pencarian (250ms)
+    let debounceTimer = null;
+    function debouncedRender() {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        renderMarkers(false);
+      }, 250);
+    }
 
-    searchBox.addEventListener("input", renderMarkers);
-    providerFilter.addEventListener("change", renderMarkers);
-    areaFilter.addEventListener("change", renderMarkers);
-    sampleFilter.addEventListener("change", renderMarkers);
-    radiusFilter.addEventListener("change", renderMarkers);
-    
+    // Event Handlers untuk Filter & Quick Chips
+    searchBox.addEventListener("input", debouncedRender);
+    searchBox.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        clearTimeout(debounceTimer);
+        renderMarkers(true);
+      }
+    });
+
+    providerFilter.addEventListener("change", () => renderMarkers(true));
+    areaFilter.addEventListener("change", () => renderMarkers(true));
+    if (roiFilter) roiFilter.addEventListener("change", () => renderMarkers(true));
+    sampleFilter.addEventListener("change", () => renderMarkers(true));
+    if (intersectionFilter) intersectionFilter.addEventListener("change", () => renderMarkers(true));
+    if (cardinalFilter) cardinalFilter.addEventListener("change", () => renderMarkers(true));
+    radiusFilter.addEventListener("change", () => renderMarkers(false));
+    if (toggleIntersections) toggleIntersections.addEventListener("change", renderIntersections);
+    if (togglePerspectives) togglePerspectives.addEventListener("change", () => renderMarkers(false));
+
+    // Preset Corridor Chips Click Handler
+    const presetButtons = document.querySelectorAll(".preset-chip");
+    presetButtons.forEach(btn => {
+      btn.addEventListener("click", () => {
+        presetButtons.forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        
+        const preset = btn.getAttribute("data-preset");
+        if (preset === "ALL") {
+          searchBox.value = "";
+          sampleFilter.value = "ALL";
+          providerFilter.value = "ALL";
+          areaFilter.value = "ALL";
+          if (roiFilter) roiFilter.value = "ALL";
+          if (intersectionFilter) intersectionFilter.value = "ALL";
+          if (cardinalFilter) cardinalFilter.value = "ALL";
+        } else if (preset === "ROI_ONLY") {
+          searchBox.value = "";
+          sampleFilter.value = "ALL";
+          providerFilter.value = "ALL";
+          areaFilter.value = "ALL";
+          if (roiFilter) roiFilter.value = "WITH_ROI";
+          if (intersectionFilter) intersectionFilter.value = "ALL";
+          if (cardinalFilter) cardinalFilter.value = "ALL";
+        } else if (preset === "ACTIVE_ONLY") {
+          searchBox.value = "";
+          sampleFilter.value = "YES";
+          if (roiFilter) roiFilter.value = "ALL";
+          if (intersectionFilter) intersectionFilter.value = "ALL";
+          if (cardinalFilter) cardinalFilter.value = "ALL";
+        } else {
+          searchBox.value = btn.textContent;
+          sampleFilter.value = "ALL";
+          if (roiFilter) roiFilter.value = "ALL";
+          if (intersectionFilter) intersectionFilter.value = "ALL";
+          if (cardinalFilter) cardinalFilter.value = "ALL";
+        }
+        renderMarkers(true);
+      });
+    });
+
+    // Reset Filter Button Handler
+    function resetAllFilters() {
+      searchBox.value = "";
+      sampleFilter.value = "ALL";
+      providerFilter.value = "ALL";
+      areaFilter.value = "ALL";
+      if (roiFilter) roiFilter.value = "ALL";
+      if (intersectionFilter) intersectionFilter.value = "ALL";
+      if (cardinalFilter) cardinalFilter.value = "ALL";
+      radiusFilter.value = "0";
+      hexbinFilter.value = "0";
+      toggleHeatmap.checked = false;
+      if (togglePerspectives) togglePerspectives.checked = false;
+      if (toggleElevation && toggleElevation.checked) {
+        toggleElevation.checked = false;
+        renderElevationHeatmap();
+      }
+      if (toggleTemperature && toggleTemperature.checked) {
+        toggleTemperature.checked = false;
+        renderTemperatureHeatmap();
+      }
+      presetButtons.forEach(b => b.classList.remove("active"));
+      const allBtn = document.querySelector('.preset-chip[data-preset="ALL"]');
+      if (allBtn) allBtn.classList.add("active");
+      renderMarkers(true);
+    }
+
+    if (resetFiltersBtn) resetFiltersBtn.addEventListener("click", resetAllFilters);
+    if (emptyResetBtn) emptyResetBtn.addEventListener("click", resetAllFilters);
+
+    // ==========================================
+    // Open-Meteo Layer 1: Radar Presipitasi & Cuaca
+    // ==========================================
+    async function renderOpenMeteoWeather() {
+      openMeteoWeatherGroup.clearLayers();
+      if (weatherLegendControl) {
+        map.removeControl(weatherLegendControl);
+        weatherLegendControl = null;
+      }
+      if (!toggleWeather.checked) {
+        map.removeLayer(openMeteoWeatherGroup);
+        return;
+      }
+
+      openMeteoWeatherGroup.addTo(map);
+      showToast('Memuat radar presipitasi Open-Meteo...', '🌧️');
+
+      try {
+        const res = await fetch('/api/weather/grid');
+        const data = await res.json();
+        const pts = data.grid_points || [];
+
+        pts.forEach(pt => {
+          // Radial precipitation halo
+          if (pt.precipitation > 0.05) {
+            const radiusM = Math.min(4500, 1500 + pt.precipitation * 300);
+            L.circle([pt.lat, pt.lng], {
+              radius: radiusM,
+              color: pt.precipitation_color,
+              fillColor: pt.precipitation_color,
+              fillOpacity: 0.28,
+              weight: 1.5,
+              dashArray: '4, 4'
+            }).addTo(openMeteoWeatherGroup);
+          }
+
+          // Station weather badge
+          const icon = L.divIcon({
+            className: 'weather-station-div',
+            html: `
+              <div class="weather-station-badge" style="border-left: 3px solid ${pt.precipitation_color || 'var(--accent)'};">
+                <span style="font-size:14px;">${pt.weather_icon}</span>
+                <span style="font-size:11px;">${pt.temperature}°C</span>
+                <span style="font-size:10px; color:${pt.precipitation > 0 ? 'var(--accent)' : 'var(--muted-2)'};">${pt.precipitation}mm/h</span>
+              </div>
+            `,
+            iconSize: [110, 26],
+            iconAnchor: [55, 13]
+          });
+
+          const marker = L.marker([pt.lat, pt.lng], { icon: icon });
+          marker.bindPopup(`
+            <div class="popup-title">${pt.name}</div>
+            <div class="popup-row"><span>Kondisi Cuaca:</span> <b>${pt.weather_icon} ${pt.weather_text}</b></div>
+            <div class="popup-row"><span>Suhu Udara:</span> <b>${pt.temperature}°C</b> (Kelembapan ${pt.humidity}%)</div>
+            <div class="popup-row"><span>Curah Hujan:</span> <b style="color:${pt.precipitation_color || 'var(--accent)'};">${pt.precipitation} mm/jam (${pt.precipitation_category})</b></div>
+            <div class="popup-row"><span>Kecepatan Angin:</span> ${pt.wind_speed_kmh} km/h (Arah ${pt.wind_direction_deg}°)</div>
+            <div class="popup-row"><span>Embusan Maks:</span> ${pt.wind_gusts_kmh} km/h</div>
+            <div style="margin-top:6px; font-size:10px; color:var(--muted-2); text-align:center;">Sumber: Open-Meteo High-Resolution Model</div>
+          `);
+          marker.addTo(openMeteoWeatherGroup);
+        });
+
+        // Add Legend Control
+        weatherLegendControl = L.control({ position: 'bottomright' });
+        weatherLegendControl.onAdd = function() {
+          const div = L.DomUtil.create('div', 'weather-legend-box');
+          div.innerHTML = `
+            <div style="font-weight:700; font-size:11px; margin-bottom:2px;">Intensitas Hujan (mm/h)</div>
+            <div style="display:flex; justify-content:space-between; font-size:9px; color:var(--muted-2);">
+              <span>0 (Cerah)</span><span>2.5 (Ringan)</span><span>10 (Sedang)</span><span>20+ (Lebat)</span>
+            </div>
+            <div class="legend-scale-bar" style="background:linear-gradient(to right, #10B981, #F59E0B, #EF4444, #7C3AED);"></div>
+          `;
+          L.DomEvent.disableClickPropagation(div);
+          return div;
+        };
+        weatherLegendControl.addTo(map);
+
+      } catch(err) {
+        console.error('Failed to load Open-Meteo weather grid:', err);
+        showToast('Gagal memuat data cuaca Open-Meteo', '⚠️');
+      }
+    }
+
+    // ==========================================
+    // Open-Meteo Layer 2: Vektor & Aliran Angin
+    // ==========================================
+    async function renderOpenMeteoWind() {
+      openMeteoWindGroup.clearLayers();
+      if (!toggleWind.checked) {
+        map.removeLayer(openMeteoWindGroup);
+        return;
+      }
+
+      openMeteoWindGroup.addTo(map);
+      showToast('Memuat vektor aliran angin Open-Meteo...', '💨');
+
+      try {
+        const res = await fetch('/api/weather/wind-field');
+        const data = await res.json();
+        const vectors = data.wind_vectors || [];
+
+        vectors.forEach(v => {
+          const rotDeg = (v.deg + 180) % 360; // Arrow points towards flow
+          const speedColor = v.speed > 25 ? '#EF4444' : (v.speed > 15 ? '#F59E0B' : '#06B6D4');
+          
+          const icon = L.divIcon({
+            className: 'wind-vector-div',
+            html: `
+              <div style="display:flex; align-items:center; justify-content:center; transform: rotate(${rotDeg}deg); transform-origin: center;">
+                <div style="width:0; height:0; border-left:6px solid transparent; border-right:6px solid transparent; border-bottom:18px solid ${speedColor}; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.4));"></div>
+              </div>
+              <div style="position:absolute; top:20px; left:-20px; width:60px; text-align:center; font-size:9px; font-weight:700; color:${speedColor}; background:rgba(15,23,42,0.85); border-radius:3px; padding:1px 3px; pointer-events:none;">
+                ${v.speed} km/h
+              </div>
+            `,
+            iconSize: [24, 24],
+            iconAnchor: [12, 12]
+          });
+
+          const marker = L.marker([v.lat, v.lng], { icon: icon });
+          marker.bindTooltip(`Angin: ${v.speed} km/h (Arah ${v.deg}°)`, { direction: 'top' });
+          marker.addTo(openMeteoWindGroup);
+        });
+
+      } catch(err) {
+        console.error('Failed to load wind vectors:', err);
+      }
+    }
+
+    // ==========================================
+    // Open-Meteo Layer 3: Titik Debit Sungai (GloFAS)
+    // ==========================================
+    async function renderOpenMeteoHydrology() {
+      openMeteoHydroGroup.clearLayers();
+      if (!toggleHydrology.checked) {
+        map.removeLayer(openMeteoHydroGroup);
+        return;
+      }
+
+      openMeteoHydroGroup.addTo(map);
+      showToast('Memuat stasiun hidrologi sungai GloFAS...', '🌊');
+
+      try {
+        const res = await fetch('/api/weather/hydrology');
+        const data = await res.json();
+        const stations = data.stations || [];
+
+        stations.forEach(st => {
+          const icon = L.divIcon({
+            className: 'river-gauge-div',
+            html: `
+              <div class="river-gauge-badge ${st.status_class}">
+                <span>${st.status_icon}</span>
+                <span>${st.river}: ${st.current_discharge_m3s} m³/s</span>
+              </div>
+            `,
+            iconSize: [150, 26],
+            iconAnchor: [75, 13]
+          });
+
+          const marker = L.marker([st.lat, st.lng], { icon: icon });
+          marker.bindPopup(`
+            <div class="popup-title">${st.name}</div>
+            <div class="popup-row"><span>Status Sungai:</span> <b style="color:${st.status_color};">${st.status}</b></div>
+            <div class="popup-row"><span>Debit Aliran Saat Ini:</span> <b>${st.current_discharge_m3s} m³/detik</b></div>
+            <div class="popup-row"><span>Prediksi Puncak (24 Jam):</span> <b>${st.peak_24h_m3s} m³/detik</b></div>
+            <div class="popup-row"><span>Prediksi Puncak (72 Jam):</span> <b>${st.peak_72h_m3s} m³/detik</b></div>
+            <div class="popup-row"><span>Ambang Waspada / Bahaya:</span> ${st.warning_threshold} m³/s / ${st.danger_threshold} m³/s</div>
+            <div class="popup-row"><span>Cakupan Aliran:</span> ${st.drainage_area}</div>
+            <div style="font-size:11px; color:var(--muted-2); margin-top:4px;">${st.description}</div>
+            <div style="margin-top:6px; font-size:10px; color:var(--muted-2); text-align:center;">Sumber: Open-Meteo Global Flood Awareness System (GloFAS)</div>
+          `);
+          marker.addTo(openMeteoHydroGroup);
+        });
+
+      } catch(err) {
+        console.error('Failed to load hydrology data:', err);
+      }
+    }
+
+    // ==========================================
+    // Layer Topografi: Heatmap Elevasi (Copernicus DEM via Open-Meteo)
+    // ==========================================
+    // Hypsometric tints: dataran rendah -> lereng -> puncak.
+    const ELEVATION_RAMP = [
+      [0.00, [22, 101, 52]],    // #166534 hijau dataran
+      [0.25, [101, 163, 13]],   // #65a30d
+      [0.45, [250, 204, 21]],   // #facc15
+      [0.65, [249, 115, 22]],   // #f97316
+      [0.82, [180, 83, 9]],     // #b45309
+      [1.00, [231, 229, 228]]   // #e7e5e4 puncak
+    ];
+
+    function rampColor(ramp, t) {
+      const x = Math.max(0, Math.min(1, t));
+      for (let i = 1; i < ramp.length; i++) {
+        const [p1, c1] = ramp[i - 1];
+        const [p2, c2] = ramp[i];
+        if (x <= p2) {
+          const f = (p2 === p1) ? 0 : (x - p1) / (p2 - p1);
+          return [
+            Math.round(c1[0] + (c2[0] - c1[0]) * f),
+            Math.round(c1[1] + (c2[1] - c1[1]) * f),
+            Math.round(c1[2] + (c2[2] - c1[2]) * f)
+          ];
+        }
+      }
+      return ramp[ramp.length - 1][1];
+    }
+
+    function buildGridImage(values, cols, rows, lo, hi, ramp) {
+      const canvas = document.createElement('canvas');
+      canvas.width = cols;
+      canvas.height = rows;
+      const ctx = canvas.getContext('2d');
+      const img = ctx.createImageData(cols, rows);
+      const span = Math.max(1e-6, hi - lo);
+      for (let i = 0; i < values.length; i++) {
+        const v = values[i];
+        const o = i * 4;
+        if (v === null || v === undefined) { img.data[o + 3] = 0; continue; }
+        const [r, g, b] = rampColor(ramp, (v - lo) / span);
+        img.data[o] = r;
+        img.data[o + 1] = g;
+        img.data[o + 2] = b;
+        img.data[o + 3] = 255;
+      }
+      ctx.putImageData(img, 0, 0);
+      return canvas.toDataURL('image/png');
+    }
+
+    function gridValueAt(grid, values, lat, lng) {
+      if (!grid || !values || !values.length) return null;
+      const bb = grid.bbox;
+      const step = grid.step_deg;
+      if (lat > bb.north + step / 2 || lat < bb.south - step / 2) return null;
+      if (lng < bb.west - step / 2 || lng > bb.east + step / 2) return null;
+      const row = Math.round((bb.north - lat) / step);
+      const col = Math.round((lng - bb.west) / step);
+      if (row < 0 || row >= grid.rows || col < 0 || col >= grid.cols) return null;
+      const val = values[row * grid.cols + col];
+      return (val === undefined) ? null : val;
+    }
+
+    async function renderElevationHeatmap() {
+      if (elevationOverlay) { map.removeLayer(elevationOverlay); elevationOverlay = null; }
+      if (elevationLegendControl) { map.removeControl(elevationLegendControl); elevationLegendControl = null; }
+      if (!toggleElevation || !toggleElevation.checked) return;
+
+      if (!elevationGrid) {
+        showToast('Memuat data topografi (DEM Copernicus)...', '⛰️');
+        try {
+          const res = await fetch('/api/elevation/grid');
+          const data = await res.json();
+          if (data.status !== 'success' || !(data.elevations || []).length) {
+            throw new Error(data.reason || 'Data elevasi tidak tersedia');
+          }
+          elevationGrid = data;
+        } catch (err) {
+          console.error('Failed to load elevation grid:', err);
+          showToast('Gagal memuat data elevasi topografi', '⚠️');
+          toggleElevation.checked = false;
+          return;
+        }
+      }
+      if (!toggleElevation.checked) return;   // user switched it off mid-fetch
+
+      const step = elevationGrid.step_deg;
+      const bb = elevationGrid.bbox;
+      const bounds = [
+        [bb.south - step / 2, bb.west - step / 2],
+        [bb.north + step / 2, bb.east + step / 2]
+      ];
+      elevationOverlay = L.imageOverlay(
+        buildGridImage(
+          elevationGrid.elevations,
+          elevationGrid.cols,
+          elevationGrid.rows,
+          elevationGrid.min_elevation_m,
+          elevationGrid.max_elevation_m,
+          ELEVATION_RAMP
+        ),
+        bounds,
+        {
+          opacity: 0.62,
+          interactive: false,
+          className: 'elevation-heat-img'
+        }
+      ).addTo(map);
+
+      elevationLegendControl = L.control({ position: 'bottomright' });
+      elevationLegendControl.onAdd = function() {
+        const div = L.DomUtil.create('div', 'weather-legend-box');
+        const mid = Math.round((elevationGrid.min_elevation_m + elevationGrid.max_elevation_m) / 2);
+        div.innerHTML = `
+          <div style="font-weight:700; font-size:11px; margin-bottom:2px;">Elevasi Topografi (mdpl)</div>
+          <div style="display:flex; justify-content:space-between; font-size:9px; color:var(--muted-2);">
+            <span>${elevationGrid.min_elevation_m} m</span><span>${mid} m</span><span>${elevationGrid.max_elevation_m} m</span>
+          </div>
+          <div class="legend-scale-bar" style="background:linear-gradient(to right, #166534 0%, #65a30d 25%, #facc15 45%, #f97316 65%, #b45309 82%, #e7e5e4 100%);"></div>
+          <div style="font-size:9px; color:var(--muted-2);">Rata-rata ${elevationGrid.mean_elevation_m} m · Copernicus DEM GLO-90</div>
+        `;
+        L.DomEvent.disableClickPropagation(div);
+        return div;
+      };
+      elevationLegendControl.addTo(map);
+    }
+
+    // ==========================================
+    // Weather Layer: Temperature Heatmap (Placeholder / Forecast-ready)
+    // ==========================================
+    const TEMPERATURE_RAMP = [
+      [0.00, [49, 54, 149]],    // #313695 sejuk pegunungan
+      [0.25, [69, 117, 180]],   // #4575b4
+      [0.45, [171, 217, 233]],  // #abd9e9
+      [0.60, [254, 224, 144]],  // #fee090
+      [0.80, [244, 109, 67]],   // #f46d43
+      [1.00, [165, 0, 38]]      // #a50026 hangat cekungan kota
+    ];
+
+    function temperatureImage() {
+      return buildGridImage(
+        temperatureGrid.frames[temperatureFrame],
+        temperatureGrid.cols,
+        temperatureGrid.rows,
+        temperatureGrid.min_temperature_c,
+        temperatureGrid.max_temperature_c,
+        TEMPERATURE_RAMP
+      );
+    }
+
+    function formatForecastTime(iso, k) {
+      if (!iso) return `+${k} j`;
+      return `${iso.slice(11, 16)} WIB · +${k} j`;
+    }
+
+    async function renderTemperatureHeatmap() {
+      if (temperatureOverlay) { map.removeLayer(temperatureOverlay); temperatureOverlay = null; }
+      if (temperatureLegendControl) { map.removeControl(temperatureLegendControl); temperatureLegendControl = null; }
+      if (!toggleTemperature || !toggleTemperature.checked) return;
+
+      showToast('Memuat heatmap suhu (placeholder)...', '🌡️');
+      try {
+        const res = await fetch('/api/weather/temperature-grid');
+        const data = await res.json();
+        if (data.status !== 'success' || !(data.frames || []).length) {
+          throw new Error(data.reason || 'Data suhu tidak tersedia');
+        }
+        temperatureGrid = data;
+        temperatureFrame = 0;
+      } catch (err) {
+        console.error('Failed to load temperature grid:', err);
+        showToast('Gagal memuat heatmap suhu', '⚠️');
+        toggleTemperature.checked = false;
+        return;
+      }
+      if (!toggleTemperature.checked) return;
+
+      const step = temperatureGrid.step_deg;
+      const bb = temperatureGrid.bbox;
+      const bounds = [
+        [bb.south - step / 2, bb.west - step / 2],
+        [bb.north + step / 2, bb.east + step / 2]
+      ];
+      temperatureOverlay = L.imageOverlay(temperatureImage(), bounds, {
+        opacity: 0.55,
+        interactive: false,
+        className: 'temperature-heat-img'
+      }).addTo(map);
+
+      temperatureLegendControl = L.control({ position: 'bottomright' });
+      temperatureLegendControl.onAdd = function() {
+        const div = L.DomUtil.create('div', 'weather-legend-box');
+        const mid = ((temperatureGrid.min_temperature_c + temperatureGrid.max_temperature_c) / 2).toFixed(1);
+        const times = temperatureGrid.times || [];
+        div.innerHTML = `
+          <div style="font-weight:700; font-size:11px; margin-bottom:2px;">Suhu Udara (°C) — PLACEHOLDER</div>
+          <div style="display:flex; justify-content:space-between; font-size:9px; color:var(--muted-2);">
+            <span>${temperatureGrid.min_temperature_c.toFixed(1)} °C</span>
+            <span>${mid} °C</span>
+            <span>${temperatureGrid.max_temperature_c.toFixed(1)} °C</span>
+          </div>
+          <div class="legend-scale-bar" style="background:linear-gradient(to right, #313695 0%, #4575b4 25%, #abd9e9 45%, #fee090 60%, #f46d43 80%, #a50026 100%);"></div>
+          <div style="margin-top:6px; display:flex; flex-direction:column; gap:2px;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <span style="font-size:9px; font-weight:600;">Waktu Prediksi:</span>
+              <span id="temperatureHourLabel" style="font-size:9px; color:var(--accent); font-weight:700;">${formatForecastTime(times[0], 0)}</span>
+            </div>
+            <input id="temperatureHourSlider" type="range" min="0" max="${Math.max(0, times.length - 1)}" value="0" step="1" style="width:100%; cursor:pointer;">
+          </div>
+          <div style="font-size:9px; color:var(--muted-2); margin-top:2px;">Data contoh, belum hasil forecasting</div>
+        `;
+
+        L.DomEvent.disableClickPropagation(div);
+        L.DomEvent.disableScrollPropagation(div);
+
+        const slider = div.querySelector('#temperatureHourSlider');
+        const label = div.querySelector('#temperatureHourLabel');
+        if (slider && label) {
+          slider.addEventListener('input', (e) => {
+            temperatureFrame = parseInt(e.target.value, 10) || 0;
+            if (temperatureOverlay) {
+              temperatureOverlay.setUrl(temperatureImage());
+            }
+            label.textContent = formatForecastTime(times[temperatureFrame], temperatureFrame);
+          });
+        }
+
+        return div;
+      };
+      temperatureLegendControl.addTo(map);
+    }
+
+    if (toggleTemperature) toggleTemperature.addEventListener("change", renderTemperatureHeatmap);
+
+    if (toggleWeather) toggleWeather.addEventListener("change", renderOpenMeteoWeather);
+    if (toggleWind) toggleWind.addEventListener("change", renderOpenMeteoWind);
+    if (toggleHydrology) toggleHydrology.addEventListener("change", renderOpenMeteoHydrology);
+    if (toggleElevation) toggleElevation.addEventListener("change", renderElevationHeatmap);
+
     toggleHeatmap.addEventListener("change", () => {
-      if(toggleHeatmap.checked) hexbinFilter.value = "0";
-      renderMarkers();
+      if (toggleHeatmap.checked) hexbinFilter.value = "0";
+      renderMarkers(false);
     });
     
     hexbinFilter.addEventListener("change", () => {
-      if(hexbinFilter.value !== "0") toggleHeatmap.checked = false;
-      renderMarkers();
+      if (hexbinFilter.value !== "0") toggleHeatmap.checked = false;
+      renderMarkers(false);
     });
     
-    toggleSpatialMetrics.addEventListener("change", renderMarkers);
+    toggleSpatialMetrics.addEventListener("change", () => renderMarkers(false));
 
-    closeStatsBtn.addEventListener('click', () => {
-      statsPanel.classList.add('collapsed');
-      toggleStatsBtn.style.display = 'flex';
-    });
-
+    function setPanelOpen(panel, toggleBtn, open) {
+      panel.classList.toggle('collapsed', !open);
+      toggleBtn.setAttribute('aria-expanded', String(open));
+    }
+    closeLeftPanelBtn.addEventListener('click', () => setPanelOpen(leftPanel, toggleControlsBtn, false));
+    toggleControlsBtn.addEventListener('click', () => setPanelOpen(leftPanel, toggleControlsBtn, leftPanel.classList.contains('collapsed')));
+    closeStatsBtn.addEventListener('click', () => setPanelOpen(statsPanel, toggleStatsBtn, false));
     toggleStatsBtn.addEventListener('click', () => {
-      statsPanel.classList.remove('collapsed');
-      toggleStatsBtn.style.display = 'none';
-      if (statusChartInstance) statusChartInstance.resize();
-      if (providerChartInstance) providerChartInstance.resize();
+      const open = statsPanel.classList.contains('collapsed');
+      setPanelOpen(statsPanel, toggleStatsBtn, open);
+      if (open) [statusChartInstance, providerChartInstance, areaChartInstance, reliabilityChartInstance].forEach(c => c && c.resize());
     });
+    // Chart.js global motion defaults: confident ease-out, short enough to track
+    // filter changes without feeling laggy; disabled under reduced motion.
+    if (window.Chart) {
+      Chart.defaults.animation = {
+        duration: REDUCED_MOTION ? 0 : 450,
+        easing: 'easeOutQuart'
+      };
+    }
 
-    // Live Stream HLS Logic
+    // Toast Notification Helper
+    let toastTimer = null;
+    function showToast(message, icon = '✅', duration = 3500) {
+      const toast = document.getElementById('toastBanner');
+      const toastMsg = document.getElementById('toastMessage');
+      const toastIco = document.getElementById('toastIcon');
+      if (!toast) return;
+      
+      toastMsg.textContent = message;
+      toastIco.textContent = icon;
+      toast.classList.add('show');
+      
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        toast.classList.remove('show');
+      }, duration);
+    }
+
+    // Refresh Status Handler
+    const refreshStatusBtn = document.getElementById('refreshStatusBtn');
+    const refreshStatsHeaderBtn = document.getElementById('refreshStatsHeaderBtn');
+    const refreshBtnText = document.getElementById('refreshBtnText');
+    const refreshMetaText = document.getElementById('refreshMetaText');
+
+    let isRefreshing = false;
+    async function triggerStatusRefresh() {
+      if (isRefreshing) return;
+      isRefreshing = true;
+
+      // Update UI loading state
+      const spinIcons = document.querySelectorAll('.spin-icon');
+      spinIcons.forEach(icon => icon.classList.add('spinning'));
+      if (refreshStatusBtn) {
+        refreshStatusBtn.disabled = true;
+        refreshStatusBtn.classList.add('scanning');
+      }
+      if (refreshStatsHeaderBtn) refreshStatsHeaderBtn.disabled = true;
+      if (refreshBtnText) refreshBtnText.textContent = `Memindai ${CCTV_MARKERS.length} Kamera...`;
+      if (refreshMetaText) refreshMetaText.textContent = 'Menghubungi server streaming CCTV...';
+
+      try {
+        const response = await fetch('/api/refresh-status?sync=1', { method: 'POST' });
+        const data = await response.json();
+        
+        if (data.success && data.statuses) {
+          let activeTotal = 0;
+          let missingTotal = 0;
+
+          CCTV_MARKERS.forEach(item => {
+            const newStatus = data.statuses[item.name];
+            if (newStatus) {
+              item.sampleDownloaded = newStatus;
+              if (newStatus === 'YES') activeTotal++;
+              else missingTotal++;
+            }
+          });
+
+          // Re-render map and charts
+          renderMarkers(false);
+
+          const timeStr = data.state && data.state.last_refreshed_at 
+            ? data.state.last_refreshed_at.split(' ')[1] 
+            : new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+          const durStr = data.state && data.state.duration_seconds ? ` (${data.state.duration_seconds}s)` : '';
+
+          if (refreshMetaText) {
+            refreshMetaText.textContent = `Diperbarui: ${timeStr} WIB • ${activeTotal} Aktif, ${missingTotal} Offline${durStr}`;
+          }
+
+          showToast(`Status ${CCTV_MARKERS.length} CCTV diperbarui: ${activeTotal} Aktif, ${missingTotal} Offline${durStr}`);
+        } else {
+          showToast('Gagal memperbarui status CCTV. Silakan coba lagi.', '⚠️');
+        }
+      } catch (err) {
+        console.error('Gagal melakukan refresh status CCTV:', err);
+        showToast('Koneksi ke server terputus saat memindai.', '❌');
+      } finally {
+        isRefreshing = false;
+        spinIcons.forEach(icon => icon.classList.remove('spinning'));
+        if (refreshStatusBtn) {
+          refreshStatusBtn.disabled = false;
+          refreshStatusBtn.classList.remove('scanning');
+        }
+        if (refreshStatsHeaderBtn) refreshStatsHeaderBtn.disabled = false;
+        if (refreshBtnText) refreshBtnText.textContent = 'Refresh Status CCTV';
+      }
+    }
+
+    if (refreshStatusBtn) refreshStatusBtn.addEventListener('click', triggerStatusRefresh);
+    if (refreshStatsHeaderBtn) refreshStatsHeaderBtn.addEventListener('click', triggerStatusRefresh);
+
+    function updateCatalogCounts() {
+      const n = CCTV_MARKERS.length;
+      const totalCountEl = document.getElementById("totalCount");
+      if (totalCountEl) totalCountEl.textContent = n;
+      if (roiFilter && roiFilter.options.length > 0) {
+        roiFilter.options[0].text = `Semua Status Anotasi (${n} CCTV)`;
+      }
+      document.title = `TENKOU-TK — Telkom University-Kyoto University Environmental & Kinetic Observation Unit (${n} kamera)`;
+    }
+
+    let catalogReloading = false;
+    async function reloadCatalog() {
+      if (catalogReloading) return;
+      catalogReloading = true;
+      try {
+        const res = await fetch('/api/markers');
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (Array.isArray(data.markers)) {
+          CCTV_MARKERS.splice(0, CCTV_MARKERS.length, ...data.markers);
+          catalogVersion = data.version;
+          populateDropdowns();
+          updateCatalogCounts();
+          renderMarkers(false);
+          renderIntersections();
+          showToast(`Daftar CCTV diperbarui dari Pelindung: ${CCTV_MARKERS.length} kamera`, '🔄');
+        }
+      } catch (err) {
+        console.log('Muat ulang katalog CCTV gagal', err);
+      } finally {
+        catalogReloading = false;
+      }
+    }
+
+    // Polling Status CCTV Tiap 30 Detik
+    setInterval(() => {
+      fetch('/api/status?meta=1')
+        .then(res => res.json())
+        .then(data => {
+          if (data.catalog && data.catalog.version !== catalogVersion) {
+            reloadCatalog();
+            return;
+          }
+          let updated = false;
+          const statuses = data.statuses || data;
+          CCTV_MARKERS.forEach(item => {
+            if (statuses[item.name] && item.sampleDownloaded !== statuses[item.name]) {
+              item.sampleDownloaded = statuses[item.name];
+              updated = true;
+            }
+          });
+          if (updated) renderMarkers(false);
+
+          if (data.state && data.state.last_refreshed_at && refreshMetaText && !isRefreshing) {
+            const timeStr = data.state.last_refreshed_at.split(' ')[1];
+            refreshMetaText.textContent = `Diperbarui: ${timeStr} WIB • ${data.state.active_count} Aktif, ${data.state.missing_count} Offline`;
+          }
+        })
+        .catch(err => console.log('Ping status server gagal', err));
+    }, 30000);
+
+    // Live Stream HLS Logic & ROI Canvas Overlay
     let currentHls = null;
+    let wallHlsInstances = [];
+    let wallTimers = [];
+
+    function drawRoiOverlay(canvas, video, rois) {
+      if (!canvas || !video || !rois || rois.length === 0) return;
+      const rect = video.getBoundingClientRect();
+      const cw = video.clientWidth || 300;
+      const ch = video.clientHeight || 170;
+      canvas.width = cw;
+      canvas.height = ch;
+
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, cw, ch);
+
+      // Assume native video resolution (standard 640x480 or 1280x720)
+      const vw = video.videoWidth || 640;
+      const vh = video.videoHeight || 480;
+      const scaleX = cw / vw;
+      const scaleY = ch / vh;
+
+      rois.forEach((r, idx) => {
+        const poly = r.polygon;
+        if (!poly || poly.length < 4) return;
+
+        const pts = poly.map(p => ({ x: p[0] * scaleX, y: p[1] * scaleY }));
+
+        // Draw Poly Fill
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x, pts[0].y);
+        for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i].x, pts[i].y);
+        ctx.closePath();
+        ctx.fillStyle = 'rgba(56, 189, 248, 0.2)';
+        ctx.fill();
+
+        // Width Edges 0-1 & 2-3 (Amber Gold)
+        ctx.lineWidth = 2.5;
+        ctx.strokeStyle = '#F59E0B';
+        ctx.beginPath();
+        ctx.moveTo(pts[0].x, pts[0].y);
+        ctx.lineTo(pts[1].x, pts[1].y);
+        ctx.stroke();
+
+        if (pts.length >= 4) {
+          ctx.beginPath();
+          ctx.moveTo(pts[2].x, pts[2].y);
+          ctx.lineTo(pts[3].x, pts[3].y);
+          ctx.stroke();
+        }
+
+        // Length Edges 1-2 & 3-0 (Electric Blue)
+        ctx.strokeStyle = '#38BDF8';
+        if (pts.length >= 3) {
+          ctx.beginPath();
+          ctx.moveTo(pts[1].x, pts[1].y);
+          ctx.lineTo(pts[2].x, pts[2].y);
+          ctx.stroke();
+        }
+        if (pts.length >= 4) {
+          ctx.beginPath();
+          ctx.moveTo(pts[3].x, pts[3].y);
+          ctx.lineTo(pts[0].x, pts[0].y);
+          ctx.stroke();
+        }
+
+        // Vertices
+        pts.forEach((pt, pidx) => {
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, 4, 0, 2 * Math.PI);
+          ctx.fillStyle = '#10B981';
+          ctx.fill();
+          ctx.strokeStyle = '#FFFFFF';
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        });
+
+        // Label Tag
+        const midX = (pts[0].x + pts[2].x) / 2;
+        const midY = (pts[0].y + pts[2].y) / 2;
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+        ctx.fillRect(midX - 35, midY - 10, 70, 20);
+        ctx.strokeStyle = '#38BDF8';
+        ctx.strokeRect(midX - 35, midY - 10, 70, 20);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = 'bold 9px "Public Sans", sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`${r.name || 'ROI'} (${r.length_m}m×${r.width_m}m)`, midX, midY);
+      });
+    }
+
+    function buildHlsConfig() {
+      return {
+        enableWorker: true,
+        lowLatencyMode: false,
+        manifestLoadingTimeOut: 20000,
+        manifestLoadingMaxRetry: 2,
+        manifestLoadingRetryDelay: 1500,
+        levelLoadingTimeOut: 20000,
+        levelLoadingMaxRetry: 4,
+        levelLoadingRetryDelay: 1500,
+        fragLoadingTimeOut: 40000,
+        fragLoadingMaxRetry: 4,
+        fragLoadingRetryDelay: 1500,
+        maxBufferLength: 30,
+        backBufferLength: 30
+      };
+    }
+
+    function initLivePlayer(videoElem, streamUrl) {
+      if (!videoElem || !streamUrl) return;
+      const container = videoElem.parentElement;
+      const existingError = container.querySelector('.hls-error');
+      if (existingError) existingError.remove();
+      const existingLoading = container.querySelector('.hls-loading');
+      if (existingLoading) existingLoading.remove();
+
+      const loadingDiv = document.createElement('div');
+      loadingDiv.className = 'hls-loading';
+      loadingDiv.style.cssText = 'position:absolute; top:0; left:0; right:0; bottom:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.85); color:#cbd5e1; font-size:12px; text-align:center; padding:10px; z-index:10; font-weight:600;';
+      loadingDiv.textContent = 'Menghubungkan ke kamera…';
+      container.appendChild(loadingDiv);
+
+      function clearLoading() {
+        const el = container.querySelector('.hls-loading');
+        if (el) el.remove();
+      }
+
+      function showStreamError(message) {
+        clearLoading();
+        if (watchdog) { clearTimeout(watchdog); watchdog = null; }
+        if (container.querySelector('.hls-error')) return;
+        const errDiv = document.createElement('div');
+        errDiv.className = 'hls-error';
+        errDiv.style.cssText = 'position:absolute; top:0; left:0; right:0; bottom:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.85); color:#f87171; font-size:13px; text-align:center; padding:10px; z-index:10; font-weight:600; flex-direction:column; gap:6px;';
+        errDiv.innerHTML = `
+          <span>${message}</span>
+          <span style="font-size:11px; color:#94a3b8; font-weight:400;">Kamera mungkin sedang offline atau buffering</span>
+          <button type="button" class="retry-stream-btn inline-action-btn" style="margin-top:2px;">Coba Lagi</button>
+        `;
+        container.appendChild(errDiv);
+        const retryBtn = errDiv.querySelector('.retry-stream-btn');
+        if (retryBtn) {
+          retryBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            initLivePlayer(videoElem, streamUrl);
+          });
+        }
+      }
+
+      let netRetries = 0;
+      let mediaRetries = 0;
+      let watchdog = null;
+
+      if (Hls.isSupported()) {
+        if (currentHls) currentHls.destroy();
+        currentHls = new Hls(buildHlsConfig());
+        currentHls.loadSource(streamUrl);
+        currentHls.attachMedia(videoElem);
+        currentHls.on(Hls.Events.MANIFEST_PARSED, function() {
+          videoElem.play().catch(err => console.log("Autoplay dicegah browser", err));
+          if (watchdog) clearTimeout(watchdog);
+          watchdog = setTimeout(() => {
+            if (videoElem.readyState < 3) {
+              showStreamError('Stream tidak mengirim video');
+              if (currentHls) currentHls.destroy();
+            }
+          }, 40000);
+        });
+        currentHls.on(Hls.Events.FRAG_BUFFERED, function() {
+          clearLoading();
+          if (watchdog) { clearTimeout(watchdog); watchdog = null; }
+        });
+        videoElem.addEventListener('playing', clearLoading);
+        currentHls.on(Hls.Events.ERROR, function(event, data) {
+          if (!data.fatal) return;
+          switch (data.type) {
+            case Hls.ErrorTypes.NETWORK_ERROR:
+              if (['manifestLoadError', 'manifestLoadTimeOut', 'manifestParsingError'].includes(data.details)) {
+                netRetries++;
+                if (netRetries <= 2) {
+                  setTimeout(() => { if (currentHls) currentHls.loadSource(streamUrl); }, 2000 * netRetries);
+                } else {
+                  showStreamError('Kamera tidak merespons');
+                  currentHls.destroy();
+                }
+              } else {
+                netRetries++;
+                if (netRetries <= 3) {
+                  setTimeout(() => { if (currentHls) currentHls.startLoad(); }, 1500);
+                } else {
+                  showStreamError('Koneksi stream terputus');
+                  currentHls.destroy();
+                }
+              }
+              break;
+            case Hls.ErrorTypes.MEDIA_ERROR:
+              mediaRetries++;
+              if (mediaRetries === 1) {
+                currentHls.recoverMediaError();
+              } else if (mediaRetries === 2) {
+                currentHls.swapAudioCodec();
+                currentHls.recoverMediaError();
+              } else {
+                showStreamError('Gagal mendekode video');
+                currentHls.destroy();
+              }
+              break;
+            default:
+              showStreamError('Gagal Memuat Video Stream');
+              currentHls.destroy();
+              break;
+          }
+        });
+      } else if (videoElem.canPlayType('application/vnd.apple.mpegurl')) {
+        videoElem.src = streamUrl;
+        videoElem.addEventListener('loadedmetadata', function() {
+          videoElem.play().catch(err => console.log("Autoplay dicegah", err));
+        });
+        videoElem.addEventListener('playing', clearLoading);
+        videoElem.addEventListener('error', function() {
+          showStreamError('Gagal Memuat Video Stream');
+        });
+      } else {
+        showStreamError('Browser tidak mendukung pemutaran HLS');
+      }
+    }
+
+    // ==========================================
+    // CCTV Live Weather Classification (LightGBM)
+    // ==========================================
+    const WEATHER_CLASSIFY_INTERVAL_MS = 30000;
+    const WEATHER_CLASSIFY_FIRST_DELAY_MS = 2000;
+    const WEATHER_CLASS_LABELS = {
+      rain: '🌧️ Hujan',
+      sunny: '☀️ Cerah',
+      unknown: '🌙 Malam / tak pasti'
+    };
+    const WEATHER_CLASS_COLORS = {
+      rain: 'rgba(37, 99, 235, 0.88)',
+      sunny: 'rgba(217, 119, 6, 0.88)',
+      unknown: 'rgba(71, 85, 105, 0.88)'
+    };
+    let weatherClassifyTimer = null;
+    let weatherClassifySession = null;
+
+    function stopWeatherClassification() {
+      if (weatherClassifyTimer) {
+        clearTimeout(weatherClassifyTimer);
+        weatherClassifyTimer = null;
+      }
+      weatherClassifySession = null;
+    }
+
+    function showWeatherBadge(badge, text, bg, title) {
+      if (!badge) return;
+      badge.textContent = text;
+      badge.style.background = bg;
+      badge.title = title || '';
+      badge.style.display = 'block';
+    }
+
+    async function classifyVideoFrame(videoElem, badge, session) {
+      if (session !== weatherClassifySession || !videoElem || !videoElem.isConnected) return false;
+      if (!videoElem.videoWidth || !videoElem.videoHeight) return true;
+
+      const canvas = document.createElement('canvas');
+      canvas.width = videoElem.videoWidth;
+      canvas.height = videoElem.videoHeight;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return true;
+
+      let blob;
+      try {
+        ctx.drawImage(videoElem, 0, 0, canvas.width, canvas.height);
+        blob = await new Promise((resolve, reject) => {
+          canvas.toBlob(b => b ? resolve(b) : reject(new Error('toBlob gagal')), 'image/jpeg', 0.9);
+        });
+      } catch (err) {
+        console.warn('Canvas capture error for weather classification:', err);
+        showWeatherBadge(badge, '⚠️ Cuaca tak tersedia', WEATHER_CLASS_COLORS.unknown, err.message);
+        return false;
+      }
+
+      let data;
+      try {
+        const res = await fetch('/api/weather/classify-frame', {
+          method: 'POST',
+          headers: { 'Content-Type': 'image/jpeg' },
+          body: blob
+        });
+        data = await res.json();
+      } catch (err) {
+        console.warn('Weather classify fetch error:', err);
+        showWeatherBadge(badge, '⚠️ Cuaca: gagal', WEATHER_CLASS_COLORS.unknown, 'Koneksi ke server gagal');
+        return true;
+      }
+
+      if (session !== weatherClassifySession) return false;
+
+      if (data.status === 'unavailable') {
+        showWeatherBadge(badge, '⚠️ Model cuaca tidak tersedia', WEATHER_CLASS_COLORS.unknown, data.reason || '');
+        return false;
+      }
+
+      if (data.status !== 'success') {
+        showWeatherBadge(badge, '⚠️ Cuaca: gagal', WEATHER_CLASS_COLORS.unknown, data.reason || '');
+        return true;
+      }
+
+      const time = new Date().toLocaleTimeString('id-ID');
+      if (data.label === 'unknown') {
+        showWeatherBadge(
+          badge,
+          WEATHER_CLASS_LABELS.unknown,
+          WEATHER_CLASS_COLORS.unknown,
+          `${data.reason || 'Di luar domain model'} · kecerahan ${data.brightness} · ${time}`
+        );
+      } else {
+        const labelText = WEATHER_CLASS_LABELS[data.label] || data.label;
+        const confPct = Math.round((data.confidence ?? 0) * 100);
+        const pRainPct = ((data.p_rain ?? 0) * 100).toFixed(1);
+        showWeatherBadge(
+          badge,
+          `${labelText} ${confPct}%`,
+          WEATHER_CLASS_COLORS[data.label] || WEATHER_CLASS_COLORS.unknown,
+          `${data.model} · P(hujan) ${pRainPct}% · ${time}`
+        );
+      }
+      return true;
+    }
+
+    function startWeatherClassification(videoElem, badge) {
+      stopWeatherClassification();
+      const session = {};
+      weatherClassifySession = session;
+
+      async function tick() {
+        if (session !== weatherClassifySession || !videoElem.isConnected) return;
+        let keepGoing = true;
+        if (videoElem.readyState >= 2 && videoElem.videoWidth > 0) {
+          if (badge.style.display === 'none') {
+            showWeatherBadge(badge, '⏳ Menganalisis cuaca…', WEATHER_CLASS_COLORS.unknown, 'Memproses frame video...');
+          }
+          keepGoing = await classifyVideoFrame(videoElem, badge, session);
+        }
+        if (keepGoing && session === weatherClassifySession) {
+          weatherClassifyTimer = setTimeout(tick, WEATHER_CLASSIFY_INTERVAL_MS);
+        }
+      }
+
+      if (videoElem.readyState >= 2 && !videoElem.paused) {
+        weatherClassifyTimer = setTimeout(tick, WEATHER_CLASSIFY_FIRST_DELAY_MS);
+      } else {
+        videoElem.addEventListener('playing', () => {
+          if (session === weatherClassifySession) {
+            weatherClassifyTimer = setTimeout(tick, WEATHER_CLASSIFY_FIRST_DELAY_MS);
+          }
+        }, { once: true });
+      }
+    }
+
+    // Popup Open & ROI Toggle Listeners
     map.on('popupopen', function(e) {
       const popupNode = e.popup._contentNode;
       if (!popupNode) return;
       
       const videoElem = popupNode.querySelector('video.cctv-live-player');
+      const canvasElem = popupNode.querySelector('canvas.roi-overlay-canvas');
+      const roiBtn = popupNode.querySelector('.toggle-roi-btn');
+
       if (videoElem) {
         const streamUrl = videoElem.getAttribute('data-stream');
-        if (Hls.isSupported()) {
-          if (currentHls) currentHls.destroy();
-          currentHls = new Hls();
-          currentHls.loadSource(streamUrl);
-          currentHls.attachMedia(videoElem);
-          currentHls.on(Hls.Events.MANIFEST_PARSED, function() {
-            videoElem.play().catch(err => console.log("Auto-play prevented", err));
-          });
-          currentHls.on(Hls.Events.ERROR, function(event, data) {
-            if (data.fatal) {
-              const container = videoElem.parentElement;
-              if (!container.querySelector('.hls-error')) {
-                const errDiv = document.createElement('div');
-                errDiv.className = 'hls-error';
-                errDiv.style.cssText = 'position:absolute; top:0; left:0; right:0; bottom:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,0.8); color:#ef4444; font-size:12px; text-align:center; padding:10px; z-index:10; font-weight:600; flex-direction:column; gap:4px;';
-                errDiv.innerHTML = `<span>Gagal Memutar Stream</span><span style="font-size:10px; color:#cbd5e1; font-weight:400;">${data.type}</span>`;
-                container.style.position = 'relative';
-                container.appendChild(errDiv);
-              }
-              currentHls.destroy();
-            }
+        const tryPlayBtn = popupNode.querySelector('.try-play-stream-btn');
+        const weatherBadge = popupNode.querySelector('.weather-cls-badge');
+        if (weatherBadge) {
+          startWeatherClassification(videoElem, weatherBadge);
+        }
+        if (videoElem.getAttribute('data-autoplay') !== '0') {
+          initLivePlayer(videoElem, streamUrl);
+        } else if (tryPlayBtn) {
+          tryPlayBtn.addEventListener('click', (ev) => {
+            ev.stopPropagation();
+            const placeholder = popupNode.querySelector('.cctv-offline-placeholder');
+            if (placeholder) placeholder.remove();
+            videoElem.setAttribute('data-autoplay', '1');
+            initLivePlayer(videoElem, streamUrl);
           });
         }
-        else if (videoElem.canPlayType('application/vnd.apple.mpegurl')) {
-          // Safari native HLS support
-          videoElem.src = streamUrl;
-          videoElem.addEventListener('loadedmetadata', function() {
-            videoElem.play().catch(err => console.log("Auto-play prevented", err));
+
+        if (roiBtn && canvasElem) {
+          const rawRois = videoElem.getAttribute('data-rois');
+          let rois = [];
+          try {
+            if (rawRois) rois = JSON.parse(decodeURIComponent(rawRois));
+          } catch(e) {}
+
+          let isRoiActive = false;
+          roiBtn.addEventListener('click', () => {
+            isRoiActive = !isRoiActive;
+            if (isRoiActive) {
+              canvasElem.style.display = 'block';
+              drawRoiOverlay(canvasElem, videoElem, rois);
+              roiBtn.style.background = 'var(--accent-soft)';
+            } else {
+              canvasElem.style.display = 'none';
+              roiBtn.style.background = 'var(--bg)';
+            }
           });
         }
       }
     });
 
-    map.on('popupclose', function(e) {
+    map.on('popupclose', function() {
+      stopWeatherClassification();
       if (currentHls) {
         currentHls.destroy();
         currentHls = null;
       }
+      if (highlightedCone) {
+        map.removeLayer(highlightedCone);
+        highlightedCone = null;
+      }
     });
 
-    // Initialize
+    // ==========================================
+    // CCTV Wall Controller (Corridor Multi-View)
+    // ==========================================
+    const openCctvWallBtn = document.getElementById('openCctvWallBtn');
+    const closeCctvWallBtn = document.getElementById('closeCctvWallBtn');
+    const cctvWallModal = document.getElementById('cctvWallModal');
+    const wallCorridorSelect = document.getElementById('wallCorridorSelect');
+    const cctvWallGridContainer = document.getElementById('cctvWallGridContainer');
+    const wallCorridorInfo = document.getElementById('wallCorridorInfo');
+    const wallCameraCountBadge = document.getElementById('wallCameraCountBadge');
+    const gridButtons = [
+      { btn: document.getElementById('grid2x2Btn'), cls: 'grid-2x2', max: 4 },
+      { btn: document.getElementById('grid3x3Btn'), cls: 'grid-3x3', max: 9 },
+      { btn: document.getElementById('grid1x4Btn'), cls: 'grid-1x4', max: 4 }
+    ];
+    let activeGridClass = 'grid-2x2';
+    let activeMaxCameras = 4;
+    let corridorsCache = [];
+
+    function destroyWallHls() {
+      wallTimers.forEach(id => clearTimeout(id));
+      wallTimers = [];
+      wallHlsInstances.forEach(h => {
+        try { h.destroy(); } catch(e) {}
+      });
+      wallHlsInstances = [];
+    }
+
+    async function loadCorridorCctvWall() {
+      destroyWallHls();
+      if (!cctvWallGridContainer) return;
+      cctvWallGridContainer.innerHTML = '<div style="color:var(--muted-2); font-size:12px; padding:20px; grid-column:1/-1; text-align:center;">Memuat kamera koridor...</div>';
+
+      try {
+        if (corridorsCache.length === 0) {
+          const res = await fetch('/api/corridors');
+          corridorsCache = await res.json();
+        }
+        const selectedId = wallCorridorSelect.value;
+        const corridor = corridorsCache.find(c => c.id === selectedId) || corridorsCache[0];
+
+        if (corridor) {
+          wallCorridorInfo.textContent = `${corridor.category} • ${corridor.description}`;
+          wallCameraCountBadge.textContent = `${corridor.cameraCount} Kamera Terdaftar`;
+
+          const liveCameras = corridor.cameras.filter(c => c.sampleDownloaded === 'YES');
+          const cameraPool = liveCameras.length ? liveCameras : corridor.cameras;
+          const camerasToDisplay = cameraPool.slice(0, activeMaxCameras);
+          if (camerasToDisplay.length === 0) {
+            cctvWallGridContainer.innerHTML = '<div style="color:var(--muted-2); font-size:12px; padding:20px; grid-column:1/-1; text-align:center;">Tidak ada kamera aktif yang cocok di koridor ini.</div>';
+            return;
+          }
+
+          cctvWallGridContainer.innerHTML = '';
+          camerasToDisplay.forEach((cam, idx) => {
+            const streamSrc = cam.proxyStream || cam.stream;
+            const los = cam.levelOfService || {};
+            const speedText = cam.avgSpeedKmh ? `${cam.avgSpeedKmh} km/h (LOS ${los.code || 'B'})` : 'Online';
+
+            const card = document.createElement('div');
+            card.className = 'cctv-wall-card';
+            card.innerHTML = `
+              <header>
+                <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${cam.name}</span>
+                <span style="color:${los.color || 'var(--success)'}; font-size:10px; font-weight:700;">● ${speedText}</span>
+              </header>
+              <div class="video-wrap">
+                <video class="wall-video" muted autoplay playsinline></video>
+              </div>
+              <footer>
+                <span>${cam.intersectionName || cam.perempatanName || 'Ruas Jalan'}</span>
+                <button type="button" class="jump-from-wall-btn inline-action-btn">Lihat Peta</button>
+              </footer>
+            `;
+
+            cctvWallGridContainer.appendChild(card);
+            const videoWrap = card.querySelector('.video-wrap');
+            const videoElem = card.querySelector('video.wall-video');
+
+            card.querySelector('.jump-from-wall-btn').addEventListener('click', () => {
+              cctvWallModal.classList.remove('open');
+              destroyWallHls();
+              map.flyTo([cam.lat, cam.lng], 17, { duration: 0.8 });
+            });
+
+            if (Hls.isSupported() && streamSrc) {
+              const timerId = setTimeout(() => {
+                const hls = new Hls(buildHlsConfig());
+                hls.loadSource(streamSrc);
+                hls.attachMedia(videoElem);
+                hls.on(Hls.Events.MANIFEST_PARSED, () => videoElem.play().catch(() => {}));
+                hls.on(Hls.Events.ERROR, (event, data) => {
+                  if (!data.fatal) return;
+                  try { hls.destroy(); } catch(e) {}
+                  wallHlsInstances = wallHlsInstances.filter(h => h !== hls);
+                  if (videoWrap) {
+                    videoWrap.innerHTML = '<div style="display:flex; align-items:center; justify-content:center; height:100%; color:#94a3b8; font-size:11px; text-align:center; padding:8px;">Kamera tidak tersedia</div>';
+                  }
+                });
+                wallHlsInstances.push(hls);
+              }, idx * 600);
+              wallTimers.push(timerId);
+            }
+          });
+        }
+      } catch(e) {
+        cctvWallGridContainer.innerHTML = `<div style="color:var(--danger); font-size:12px; padding:20px; grid-column:1/-1; text-align:center;">Gagal memuat CCTV Wall: ${e.message}</div>`;
+      }
+    }
+
+    if (openCctvWallBtn && cctvWallModal) {
+      openCctvWallBtn.addEventListener('click', () => {
+        cctvWallModal.classList.add('open');
+        loadCorridorCctvWall();
+      });
+    }
+
+    if (closeCctvWallBtn && cctvWallModal) {
+      closeCctvWallBtn.addEventListener('click', () => {
+        cctvWallModal.classList.remove('open');
+        destroyWallHls();
+      });
+    }
+
+    if (wallCorridorSelect) {
+      wallCorridorSelect.addEventListener('change', loadCorridorCctvWall);
+    }
+
+    gridButtons.forEach(item => {
+      if (item.btn) {
+        item.btn.addEventListener('click', () => {
+          gridButtons.forEach(b => b.btn.classList.remove('active'));
+          item.btn.classList.add('active');
+          cctvWallGridContainer.className = `cctv-wall-grid ${item.cls}`;
+          activeGridClass = item.cls;
+          activeMaxCameras = item.max;
+          loadCorridorCctvWall();
+        });
+      }
+    });
+
+    // ==========================================
+    // Flood & Extreme Weather Risk Controller
+    // ==========================================
+    const openFloodRiskBtn = document.getElementById('openFloodRiskBtn');
+    const closeFloodRiskBtn = document.getElementById('closeFloodRiskBtn');
+    const floodRiskModal = document.getElementById('floodRiskModal');
+    const floodHotspotsContainer = document.getElementById('floodHotspotsContainer');
+
+    async function loadFloodRiskData() {
+      if (!floodHotspotsContainer) return;
+      floodHotspotsContainer.innerHTML = '<div style="color:var(--muted-2); font-size:12px; padding:10px; text-align:center;">Memuat data titik rawan banjir & hidrologi sungai...</div>';
+      try {
+        const res = await fetch('/api/flood-risk');
+        const data = await res.json();
+        const hotspots = data.hotspots || [];
+
+        floodHotspotsContainer.innerHTML = '';
+        hotspots.forEach(h => {
+          const hydroInfo = (h.riverDischarge !== null && h.riverDischarge !== undefined)
+            ? `<div style="font-size:11px; color:var(--accent); font-weight:600; display:flex; gap:12px; margin-top:2px;">
+                 <span>Debit Sungai: <b>${h.riverDischarge} m³/s</b></span>
+                 <span>Puncak 24h: <b>${h.riverPeak24h || '-'} m³/s</b></span>
+               </div>`
+            : "";
+
+          const riskClass = h.riskLevel.toLowerCase().includes('siaga') ? 'siaga' : (h.riskLevel.toLowerCase().includes('waspada') ? 'waspada' : 'normal');
+
+          const card = document.createElement('div');
+          card.className = 'flood-card';
+          card.innerHTML = `
+            <div style="display:flex; flex-direction:column; gap:3px;">
+              <span style="font-weight:700; font-size:13px; color:var(--text-strong);">${h.name}</span>
+              <span style="font-size:11px; color:var(--muted-2);">Saluran: ${h.drainage} • Ambang Hujan: ${h.criticalThresholdMm} mm/jam (Hujan Saat Ini: <b>${h.currentRainMm || 0} mm/jam</b>)</span>
+              ${hydroInfo}
+              <span style="font-size:11px; color:var(--accent); font-weight:600;">${h.cctvCount} CCTV Pemantau Terhubung</span>
+            </div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="risk-pill ${riskClass}">${h.riskLevel}</span>
+              <button type="button" class="jump-flood-btn inline-action-btn">Pantau Peta</button>
+            </div>
+          `;
+          card.querySelector('.jump-flood-btn').addEventListener('click', () => {
+            floodRiskModal.classList.remove('open');
+            map.flyTo([h.lat, h.lng], 16, { duration: 0.8 });
+          });
+          floodHotspotsContainer.appendChild(card);
+        });
+      } catch(e) {
+        floodHotspotsContainer.innerHTML = `<div style="color:var(--danger); font-size:12px;">Gagal memuat status banjir: ${e.message}</div>`;
+      }
+    }
+
+    if (openFloodRiskBtn && floodRiskModal) {
+      openFloodRiskBtn.addEventListener('click', () => {
+        floodRiskModal.classList.add('open');
+        loadFloodRiskData();
+      });
+    }
+
+    if (closeFloodRiskBtn && floodRiskModal) {
+      closeFloodRiskBtn.addEventListener('click', () => {
+        floodRiskModal.classList.remove('open');
+      });
+    }
+
+    // ==========================================
+    // Server-Sent Events (SSE) Live Scanner Feed
+    // ==========================================
+    function initServerSentEvents() {
+      if (!window.EventSource) return;
+      try {
+        const sse = new EventSource('/api/stream-events');
+        sse.onmessage = function(event) {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.refresh_state && data.refresh_state.last_refreshed_at && refreshMetaText && !isRefreshing) {
+              const timeStr = data.refresh_state.last_refreshed_at.split(' ')[1];
+              refreshMetaText.textContent = `Diperbarui (Live SSE): ${timeStr} WIB • ${data.active_cctvs} Aktif / ${data.total_cctvs} CCTV`;
+            }
+          } catch(err) {}
+        };
+      } catch(e) {
+        console.log("SSE not available, falling back to polling", e);
+      }
+    }
+
+    // Inisialisasi saat window siap
     window.addEventListener("load", () => {
       populateDropdowns();
       initCharts();
+      updateChartTheme();
       map.invalidateSize();
-      renderMarkers();
+      renderMarkers(true);
+      renderIntersections();
+      updateTopIntersectionsUI();
+      initServerSentEvents();
+      
+      // Load initial refresh metadata
+      fetch('/api/status?meta=1')
+        .then(res => res.json())
+        .then(data => {
+          if (data.state && data.state.last_refreshed_at && refreshMetaText) {
+            const timeStr = data.state.last_refreshed_at.split(' ')[1];
+            refreshMetaText.textContent = `Diperbarui: ${timeStr} WIB • ${data.state.active_count} Aktif, ${data.state.missing_count} Offline`;
+          }
+        })
+        .catch(() => {});
+
+      if (isMobile) {
+        setPanelOpen(statsPanel, toggleStatsBtn, false);
+      }
     });
   </script>
 </body>

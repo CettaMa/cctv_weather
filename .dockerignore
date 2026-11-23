@@ -13,3 +13,25 @@ venv/
 *.log
 *.html
 !templates/*.html
+
+# Video clips, training datasets, and raw frames
+datasets/
+cctv_video_samples/
+outputs/cctv_clips/
+cctv_keyframes/
+weather/dataset/
+weather/dataset_frames*/
+weather/output_picture/
+weather/models_ml/
+weather/*/dataset_frames*/
+weather/*/dataset_frames_raw*/
+weather/*/output_picture/
+weather/kordon/models_ml/*
+!weather/kordon/models_ml/lgbm_weather.joblib
+
+# Knowledge graph and IDE caches
+graphify-out/
+.impeccable/
+.pytest_cache/
+*.tmp
+*.bak

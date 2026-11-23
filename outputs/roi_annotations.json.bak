@@ -1,0 +1,41 @@
+{
+  "cctv_alun_alun_01_banceuy_2": {
+    "cctv_id": "cctv_alun_alun_01_banceuy_2",
+    "video_name": "cctv_alun_alun_01_banceuy_2.mp4",
+    "rois": [
+      {
+        "roi_idx": 0,
+        "name": "roi_1",
+        "polygon": [
+          [
+            419,
+            297
+          ],
+          [
+            550,
+            317
+          ],
+          [
+            550,
+            455
+          ],
+          [
+            417,
+            449
+          ]
+        ],
+        "length_m": 4.0,
+        "width_m": 4.0
+      }
+    ],
+    "perspective_deg": 120.0
+  },
+  "cctv_alun_alun_01_banceuy": {
+    "cctv_id": "cctv_alun_alun_01_banceuy",
+    "video_name": "cctv_alun_alun_01_banceuy.mp4",
+    "rois": [],
+    "perspective_deg": 135.0,
+    "frame_width": 640,
+    "frame_height": 480
+  }
+}

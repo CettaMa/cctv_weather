@@ -1,3 +1,26 @@
-/script_tools
 /cctv_video_samples
-/__pycache__
+/datasets
+__pycache__/
+*.py[cod]
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Knowledge graph, IDE, and test caches
+graphify-out/
+.pytest_cache/
+.impeccable/
+
+# Large video clips, training datasets, and intermediate frames
+outputs/cctv_clips/
+weather/dataset/
+weather/dataset_frames*/
+weather/*/dataset_frames*/
+weather/*/dataset_frames_raw*/
+weather/output_picture/
+weather/*/output_picture/
+weather/models_ml/
+weather/kordon/models_ml/*
+!weather/kordon/models_ml/lgbm_weather.joblib
