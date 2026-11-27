@@ -1,4 +1,5 @@
 import os
+import gzip
 import json
 import socket
 import threading
@@ -13,6 +14,7 @@ try:
 except ImportError:
     cv2 = None
 from requests.adapters import HTTPAdapter
+from urllib3.util import parse_url
 from urllib3.util.retry import Retry
 from pathlib import Path
 from datetime import datetime
@@ -22,6 +24,30 @@ from flask import Flask, render_template, jsonify, request, Response
 from script_tools.update_cctv_links import sync_catalog_files
 
 app = Flask(__name__)
+
+COMPRESSIBLE_TYPES = {"text/html", "application/json"}
+
+
+@app.after_request
+def gzip_response(response):
+    """Gzip large HTML/JSON (the page embeds every marker). Streams and video are left untouched."""
+    if (
+        response.status_code != 200
+        or response.mimetype not in COMPRESSIBLE_TYPES
+        or response.direct_passthrough
+        or response.is_streamed
+        or "Content-Encoding" in response.headers
+        or "gzip" not in request.accept_encodings
+    ):
+        return response
+    body = response.get_data()
+    if len(body) < 1024:
+        return response
+    response.set_data(gzip.compress(body, compresslevel=5))
+    response.headers["Content-Encoding"] = "gzip"
+    response.vary.add("Accept-Encoding")
+    return response
+
 
 # ==========================================
 # Paths & Data Files
@@ -294,6 +320,24 @@ def load_roi_annotations() -> dict:
     except Exception:
         return {}
     return {}
+
+
+BUAHBATU_FORECAST_PATH = Path("outputs/buahbatu_forecast.json")
+_BUAHBATU_CACHE = {"mtime": None, "data": None}
+_BUAHBATU_LOCK = threading.Lock()
+
+
+def load_buahbatu_forecast() -> dict | None:
+    """Replay forecast for CCTV Terusan Buah Batu - Jembatan Tol 02 (extractions/forecast/ekspor_app.py)."""
+    if not BUAHBATU_FORECAST_PATH.exists():
+        return None
+    mtime = BUAHBATU_FORECAST_PATH.stat().st_mtime
+    with _BUAHBATU_LOCK:
+        if _BUAHBATU_CACHE["mtime"] != mtime:
+            with open(BUAHBATU_FORECAST_PATH, "r", encoding="utf-8") as f:
+                _BUAHBATU_CACHE["data"] = json.load(f)
+            _BUAHBATU_CACHE["mtime"] = mtime
+        return _BUAHBATU_CACHE["data"]
 
 
 def load_traffic_telemetry() -> dict:
@@ -882,6 +926,42 @@ def api_weather_temperature_grid():
     from script_tools.temperature_service import fetch_temperature_grid_data
     return jsonify(fetch_temperature_grid_data())
 
+@app.route("/api/buahbatu/forecast/meta")
+def api_buahbatu_forecast_meta():
+    """Camera info, available replay origins, capacity, and per-horizon error for the Buah Batu forecast panel."""
+    data = load_buahbatu_forecast()
+    if data is None:
+        return jsonify({"status": "unavailable", "reason": "outputs/buahbatu_forecast.json belum dibuat"}), 404
+    meta = {k: v for k, v in data.items() if k not in ("seri", "asal")}
+    meta["asal"] = [{"t": a["t"], "model": a["model"]} for a in data["asal"]]
+    meta["status"] = "success"
+    return jsonify(meta)
+
+
+@app.route("/api/buahbatu/forecast")
+def api_buahbatu_forecast():
+    """Forecast from one replay origin: traffic per direction (+5..+360 min) and 5-minute weather.
+
+    Query: asal=<ISO time from /meta> (default: latest origin). Series start 2 hours before the origin.
+    """
+    data = load_buahbatu_forecast()
+    if data is None:
+        return jsonify({"status": "unavailable", "reason": "outputs/buahbatu_forecast.json belum dibuat"}), 404
+    origins = data["asal"]
+    wanted = request.args.get("asal")
+    item = next((a for a in origins if a["t"] == wanted), None) if wanted else origins[-1]
+    if item is None:
+        return jsonify({"status": "error", "reason": f"titik asal tidak ditemukan: {wanted}"}), 400
+    seri = data["seri"]
+    hist = 24                                  # 2 jam sebelum asal
+    lo, hi = item["i"] - hist, item["i"] + data["h_max"] + 1
+    window = {k: v[max(lo, 0):hi] for k, v in seri.items() if isinstance(v, list)}
+    return jsonify({
+        "status": "success", "asal": item["t"], "model": item["model"], "pred": item["pred"],
+        "offset_asal": item["i"] - max(lo, 0), "langkah_menit": data["langkah_menit"], "seri": window,
+    })
+
+
 @app.route("/api/weather/classify-frame", methods=["POST"])
 def api_weather_classify_frame():
     """Classify a single JPEG CCTV frame (raw request body) as rain / sunny / unknown (low light)."""
@@ -894,19 +974,22 @@ def api_weather_classify_frame():
 
 @app.route("/api/stream-events")
 def api_stream_events():
-    """Server-Sent Events (SSE) live stream delivering real-time CCTV health and traffic telemetry."""
-    def event_generator():
-        while True:
-            payload = {
-                "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                "refresh_state": REFRESH_STATE,
-                "active_cctvs": REFRESH_STATE.get("active_count", 0),
-                "total_cctvs": len(markers_global)
-            }
-            yield f"data: {json.dumps(payload)}\n\n"
-            time.sleep(3)
+    """Server-Sent Events (SSE) feed of CCTV health.
 
-    return Response(event_generator(), mimetype="text/event-stream")
+    One event per connection, then close: EventSource reconnects after `retry` ms. A connection that
+    stays open would hold a gthread worker thread per browser tab and exhaust the server.
+    """
+    payload = {
+        "timestamp": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "refresh_state": REFRESH_STATE,
+        "active_cctvs": REFRESH_STATE.get("active_count", 0),
+        "total_cctvs": len(markers_global)
+    }
+    return Response(
+        f"retry: 5000\ndata: {json.dumps(payload)}\n\n",
+        mimetype="text/event-stream",
+        headers={"Cache-Control": "no-cache"},
+    )
 
 
 @app.route("/api/status")
@@ -1023,9 +1106,68 @@ def declared_length(res):
     return int(raw) if raw and raw.isdigit() else None
 
 
+# ------------------------------------------------------------------
+# Upstream allowlist: the proxy only talks to hosts that serve cameras in the catalog.
+# Without this, anyone could make the server fetch internal addresses (SSRF).
+# ------------------------------------------------------------------
+MAX_UPSTREAM_REDIRECTS = 3
+
+
+class BlockedUpstream(requests.RequestException):
+    """Target (or redirect target) is not a catalog camera host."""
+
+
+def url_origin(url: str):
+    """(scheme, host, port) of a plain http(s) URL, or None if it must not be fetched.
+
+    Parsed with urllib3, the same parser requests connects with, so the checked host is the real one.
+    """
+    if not url or "\\" in url or any(ord(ch) <= 32 for ch in url):
+        return None
+    try:
+        parsed = parse_url(url)
+    except ValueError:
+        return None
+    if parsed.scheme not in ("http", "https") or parsed.auth is not None or not parsed.host:
+        return None
+    return parsed.scheme, parsed.host.lower(), parsed.port or (443 if parsed.scheme == "https" else 80)
+
+
+def allowed_origins() -> set:
+    origins = {url_origin(m.get("stream", "")) for m in markers_global}
+    origins.add(url_origin(UPSTREAM_VIDEO_BASE))
+    origins.discard(None)
+    return origins
+
+
+def is_allowed_upstream(url: str) -> bool:
+    origin = url_origin(url)
+    return origin is not None and origin in allowed_origins()
+
+
+def fetch_upstream(url: str):
+    """GET a camera URL, checking the allowlist on the first request and on every redirect."""
+    for _ in range(MAX_UPSTREAM_REDIRECTS + 1):
+        if not is_allowed_upstream(url):
+            raise BlockedUpstream("alamat di luar daftar kamera")
+        res = UPSTREAM_SESSION.get(
+            url, timeout=(UPSTREAM_CONNECT_TIMEOUT, UPSTREAM_READ_TIMEOUT), allow_redirects=False
+        )
+        if res.status_code not in (301, 302, 303, 307, 308) or not res.headers.get("Location"):
+            return res
+        url = urllib.parse.urljoin(url, res.headers["Location"])
+    raise BlockedUpstream("terlalu banyak pengalihan")
+
+
+def blocked_response() -> Response:
+    return Response("Alamat stream tidak diizinkan", status=403, headers=CORS_HEADERS)
+
+
 def serve_playlist(target_url: str) -> Response:
     try:
-        res = UPSTREAM_SESSION.get(target_url, timeout=(UPSTREAM_CONNECT_TIMEOUT, UPSTREAM_READ_TIMEOUT))
+        res = fetch_upstream(target_url)
+    except BlockedUpstream:
+        return blocked_response()
     except requests.RequestException as exc:
         return Response(f"Stream proxy connection error: {exc}", status=502, headers=CORS_HEADERS)
     if res.status_code != 200:
@@ -1058,7 +1200,9 @@ def serve_segment(cache_key: str, target_url: str) -> Response:
         last_error = ""
         for attempt in range(2):
             try:
-                res = UPSTREAM_SESSION.get(target_url, timeout=(UPSTREAM_CONNECT_TIMEOUT, UPSTREAM_READ_TIMEOUT))
+                res = fetch_upstream(target_url)
+            except BlockedUpstream:
+                return blocked_response()
             except requests.RequestException as exc:
                 last_error = str(exc)
                 continue
@@ -1085,6 +1229,9 @@ def serve_segment(cache_key: str, target_url: str) -> Response:
 def proxy_cctv_stream(subpath):
     """Proxy live HLS m3u8 playlist and ts chunks with a short, validated segment cache."""
     target_url = urllib.parse.urljoin(UPSTREAM_VIDEO_BASE, subpath)
+    # urljoin lets an absolute URL or "../" replace the base, so check the result stays inside it
+    if not target_url.startswith(UPSTREAM_VIDEO_BASE) or ".." in urllib.parse.unquote(subpath).split("/"):
+        return blocked_response()
     if subpath.endswith(".ts"):
         return serve_segment(subpath, target_url)
     return serve_playlist(target_url)
@@ -1092,7 +1239,7 @@ def proxy_cctv_stream(subpath):
 
 @app.route("/api/proxy_stream")
 def proxy_generic_stream():
-    """Universal stream proxy for any external m3u8 stream with relative link rewriting."""
+    """Proxy an m3u8 stream from a catalog camera host, with relative link rewriting."""
     raw_url = request.args.get("url", "").strip()
     if not raw_url:
         return Response("Parameter 'url' diperlukan", status=400, headers=CORS_HEADERS)
@@ -1102,11 +1249,16 @@ def proxy_generic_stream():
             "https://pelindung.bandung.go.id/video/", "https://pelindung.bandung.go.id:3443/video/"
         )
 
+    if not is_allowed_upstream(raw_url):
+        return blocked_response()
+
     if raw_url.endswith(".ts"):
         return serve_segment(raw_url, raw_url)
 
     try:
-        res = UPSTREAM_SESSION.get(raw_url, timeout=(UPSTREAM_CONNECT_TIMEOUT, UPSTREAM_READ_TIMEOUT))
+        res = fetch_upstream(raw_url)
+    except BlockedUpstream:
+        return blocked_response()
     except requests.RequestException as exc:
         return Response(f"Stream proxy connection error: {exc}", status=502, headers=CORS_HEADERS)
     if res.status_code != 200:

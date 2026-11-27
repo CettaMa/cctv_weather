@@ -1,0 +1,211 @@
+{
+ "evaluasi_detektor": {
+  "menit_berlabel": 2893,
+  "menit_basah": 439,
+  "hari": 16,
+  "video_berlabel": 51,
+  "auc_menit": 0.9039743582603271,
+  "akurasi_menit_0.5": 0.9253370203940546,
+  "recall_basah": 0.6355353075170843,
+  "presisi_basah": 0.8328358208955224,
+  "auc_video": 0.9512195121951219,
+  "fitur_terpenting": {
+   "kilap_jalan": 11038.0,
+   "terang_jalan": 3425.0,
+   "std_jalan": 2732.0,
+   "tekstur_lain": 2104.0,
+   "rasio_tekstur": 1635.0
+  }
+ },
+ "awal_hujan_terdeteksi": [
+  {
+   "video": "TERUSAN_BUAHBATU_20261119T091316Z",
+   "awal": "2026-11-19T16:33:00+07:00",
+   "kering_menit": 20,
+   "basah_menit": 40,
+   "p_sebelum": 0.023627628328197658,
+   "p_sesudah": 0.9760978660881825,
+   "terverifikasi": true,
+   "selisih_menit_vs_visual": 5.0
+  }
+ ],
+ "kejadian": [
+  {
+   "awal": "2026-11-16 14:54:00+07:00",
+   "arah": "menjauhi",
+   "menit_ada": 51,
+   "menit_layak": 46,
+   "respon": {
+    "est_flow_veh_per_hour": {
+     "sebelum_30": 3273.6633333333334,
+     "sesudah_0_10": 1851.6833333333334,
+     "n_0_10": 6,
+     "sesudah_10_35": null,
+     "n_10_35": 0,
+     "hari_lain_median": 3318.7,
+     "menit_keluar_rentang": 2.0
+    },
+    "average_active_total": {
+     "sebelum_30": 4.3527,
+     "sesudah_0_10": 3.4311666666666665,
+     "n_0_10": 6,
+     "sesudah_10_35": null,
+     "n_10_35": 0,
+     "hari_lain_median": 4.09,
+     "menit_keluar_rentang": null
+    },
+    "avg_stopped_ratio": {
+     "sebelum_30": 0.0381,
+     "sesudah_0_10": 0.3286666666666667,
+     "n_0_10": 6,
+     "sesudah_10_35": null,
+     "n_10_35": 0,
+     "hari_lain_median": 0.002,
+     "menit_keluar_rentang": 0.0
+    },
+    "porsi_motor": {
+     "sebelum_30": 0.5988389880525015,
+     "sesudah_0_10": 0.32326661839426424,
+     "n_0_10": 6,
+     "sesudah_10_35": null,
+     "n_10_35": 0,
+     "hari_lain_median": 0.593215664644236,
+     "menit_keluar_rentang": 0.0
+    }
+   }
+  },
+  {
+   "awal": "2026-11-16 14:54:00+07:00",
+   "arah": "mendekati",
+   "menit_ada": 51,
+   "menit_layak": 46,
+   "respon": {
+    "est_flow_veh_per_hour": {
+     "sebelum_30": 2803.193333333333,
+     "sesudah_0_10": 2025.6833333333334,
+     "n_0_10": 6,
+     "sesudah_10_35": null,
+     "n_10_35": 0,
+     "hari_lain_median": 2869.2,
+     "menit_keluar_rentang": null
+    },
+    "average_active_total": {
+     "sebelum_30": 3.0287999999999995,
+     "sesudah_0_10": 1.825,
+     "n_0_10": 6,
+     "sesudah_10_35": null,
+     "n_10_35": 0,
+     "hari_lain_median": 2.871,
+     "menit_keluar_rentang": 1.0
+    },
+    "avg_stopped_ratio": {
+     "sebelum_30": 0.059899999999999995,
+     "sesudah_0_10": 0.02533333333333333,
+     "n_0_10": 6,
+     "sesudah_10_35": null,
+     "n_10_35": 0,
+     "hari_lain_median": 0.068,
+     "menit_keluar_rentang": null
+    },
+    "porsi_motor": {
+     "sebelum_30": 0.5377564898367936,
+     "sesudah_0_10": 0.27820878897342427,
+     "n_0_10": 6,
+     "sesudah_10_35": null,
+     "n_10_35": 0,
+     "hari_lain_median": 0.5345640219952867,
+     "menit_keluar_rentang": 3.0
+    }
+   }
+  },
+  {
+   "awal": "2026-11-19 16:28:00+07:00",
+   "arah": "menjauhi",
+   "menit_ada": 61,
+   "menit_layak": 50,
+   "respon": {
+    "est_flow_veh_per_hour": {
+     "sebelum_30": 3693.173333333333,
+     "sesudah_0_10": 4286.040000000001,
+     "n_0_10": 10,
+     "sesudah_10_35": 4334.86,
+     "n_10_35": 25,
+     "hari_lain_median": 4018.85,
+     "menit_keluar_rentang": 26.0
+    },
+    "average_active_total": {
+     "sebelum_30": 5.443666666666667,
+     "sesudah_0_10": 7.0715,
+     "n_0_10": 10,
+     "sesudah_10_35": 4.9828,
+     "n_10_35": 25,
+     "hari_lain_median": 5.1385000000000005,
+     "menit_keluar_rentang": null
+    },
+    "avg_stopped_ratio": {
+     "sebelum_30": 0.040933333333333335,
+     "sesudah_0_10": 0.03930000000000001,
+     "n_0_10": 10,
+     "sesudah_10_35": 0.00792,
+     "n_10_35": 25,
+     "hari_lain_median": 0.002,
+     "menit_keluar_rentang": null
+    },
+    "porsi_motor": {
+     "sebelum_30": 0.5521779652578501,
+     "sesudah_0_10": 0.5941342727662691,
+     "n_0_10": 10,
+     "sesudah_10_35": 0.6323121130276121,
+     "n_10_35": 25,
+     "hari_lain_median": 0.6338517720988772,
+     "menit_keluar_rentang": null
+    }
+   }
+  },
+  {
+   "awal": "2026-11-19 16:28:00+07:00",
+   "arah": "mendekati",
+   "menit_ada": 61,
+   "menit_layak": 50,
+   "respon": {
+    "est_flow_veh_per_hour": {
+     "sebelum_30": 2952.2133333333336,
+     "sesudah_0_10": 2613.24,
+     "n_0_10": 10,
+     "sesudah_10_35": 2475.08,
+     "n_10_35": 25,
+     "hari_lain_median": 3032.3500000000004,
+     "menit_keluar_rentang": 23.0
+    },
+    "average_active_total": {
+     "sebelum_30": 3.0125333333333333,
+     "sesudah_0_10": 2.8002000000000002,
+     "n_0_10": 10,
+     "sesudah_10_35": 2.13104,
+     "n_10_35": 25,
+     "hari_lain_median": 3.1805,
+     "menit_keluar_rentang": 10.0
+    },
+    "avg_stopped_ratio": {
+     "sebelum_30": 0.13346666666666665,
+     "sesudah_0_10": 0.1115,
+     "n_0_10": 10,
+     "sesudah_10_35": 0.04984,
+     "n_10_35": 25,
+     "hari_lain_median": 0.08,
+     "menit_keluar_rentang": 25.0
+    },
+    "porsi_motor": {
+     "sebelum_30": 0.4648305613638345,
+     "sesudah_0_10": 0.46810278024724267,
+     "n_0_10": 10,
+     "sesudah_10_35": 0.5092606512403779,
+     "n_10_35": 25,
+     "hari_lain_median": 0.543160240780464,
+     "menit_keluar_rentang": 41.0
+    }
+   }
+  }
+ ],
+ "catatan": "label visual dari frame video; siang saja"
+}

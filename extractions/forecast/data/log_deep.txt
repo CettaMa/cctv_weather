@@ -1,0 +1,36 @@
+﻿
+validasi lstm_in144: 32 s
+validasi nhits_in144: 18 s
+validasi tft_in144: 74 s
+`Trainer.fit` stopped: `max_steps=1500` reached.
+validasi tide_in144: 34 s
+validasi patchtst_in144: 20 s
+`Trainer.fit` stopped: `max_steps=1500` reached.
+validasi itransformer_in144: 24 s
+validasi lstm_in288: 46 s
+validasi nhits_in288: 14 s
+validasi tft_in288: 70 s
+`Trainer.fit` stopped: `max_steps=1500` reached.
+validasi tide_in288: 46 s
+validasi patchtst_in288: 31 s
+`Trainer.fit` stopped: `max_steps=1500` reached.
+validasi itransformer_in288: 25 s
+validasi (124560, 15)
+uji lstm_in144: 28 s
+uji nhits_in144: 15 s
+uji tft_in144: 104 s
+`Trainer.fit` stopped: `max_steps=1500` reached.
+uji tide_in144: 33 s
+`Trainer.fit` stopped: `max_steps=1500` reached.
+uji patchtst_in144: 33 s
+uji itransformer_in144: 23 s
+`Trainer.fit` stopped: `max_steps=1500` reached.
+uji lstm_in288: 65 s
+uji nhits_in288: 12 s
+uji tft_in288: 51 s
+uji tide_in288: 19 s
+uji patchtst_in288: 29 s
+uji itransformer_in288: 20 s
+uji (143712, 15)
+
+

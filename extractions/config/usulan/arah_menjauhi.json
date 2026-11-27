@@ -1,0 +1,11 @@
+{
+  "frame_width": 640,
+  "frame_height": 480,
+  "points": [[163, 130], [222, 125], [345, 218], [470, 338], [612, 479], [216, 479], [188, 300], [174, 200]],
+  "count_line": [[164, 200], [327, 200]],
+  "pkji": {
+    "active_lanes_in_roi": 2,
+    "roi_length_meters": 90.0
+  },
+  "_catatan": "USULAN A: menjauhi kamera. Periksa jumlah lajur dan panjang ROI di lapangan; nilai di 'pkji' masih bawaan."
+}

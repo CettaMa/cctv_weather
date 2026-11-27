@@ -1,0 +1,33 @@
+tahap,model,skenario,n,MAE,RMSE,WAPE,skill_vs_profil_pct,skill_vs_seasonal_pct
+validasi,persistence,-,1812,709.43,1105.26,26.85,-79.3,-69.54
+validasi,seasonal_naive,-,1812,418.45,585.29,15.84,-5.76,0.0
+validasi,profil_historis,-,1812,395.66,567.13,14.98,0.0,5.45
+validasi,lightgbm_tanpa_cuaca,tanpa_cuaca,1812,387.66,565.75,14.67,2.02,7.36
+validasi,xgboost_tanpa_cuaca,tanpa_cuaca,1812,379.88,547.6,14.38,3.99,9.22
+validasi,lightgbm_cuaca_asal,cuaca_asal,1812,384.19,555.63,14.54,2.9,8.19
+validasi,xgboost_cuaca_asal,cuaca_asal,1812,380.62,549.85,14.41,3.8,9.04
+validasi,lightgbm_cuaca_sempurna,cuaca_sempurna,1812,375.41,551.43,14.21,5.12,10.29
+validasi,xgboost_cuaca_sempurna,cuaca_sempurna,1812,375.25,542.11,14.2,5.16,10.32
+validasi,itransformer,tanpa kovariat,1812,444.5,631.62,16.82,-12.34,-6.23
+validasi,lstm,cuaca_sempurna,1812,442.1,606.78,16.73,-11.74,-5.65
+validasi,nhits,cuaca_sempurna,1812,470.51,641.4,17.81,-18.92,-12.44
+validasi,patchtst,tanpa kovariat,1812,511.54,718.15,19.36,-29.29,-22.25
+validasi,tft,cuaca_sempurna,1812,414.61,585.13,15.69,-4.79,0.92
+validasi,tide,cuaca_sempurna,1812,407.04,562.3,15.41,-2.87,2.73
+validasi,ensemble,campuran,1812,375.01,545.23,14.19,5.22,10.38
+uji,persistence,-,4392,764.25,1086.13,35.33,-63.0,-62.69
+uji,seasonal_naive,-,4392,469.75,634.67,21.72,-0.19,0.0
+uji,profil_historis,-,4392,468.85,634.83,21.68,0.0,0.19
+uji,lightgbm_tanpa_cuaca,tanpa_cuaca,4392,427.34,585.7,19.76,8.85,9.03
+uji,xgboost_tanpa_cuaca,tanpa_cuaca,4392,428.26,586.77,19.8,8.66,8.83
+uji,lightgbm_cuaca_asal,cuaca_asal,4392,425.16,581.99,19.66,9.32,9.49
+uji,xgboost_cuaca_asal,cuaca_asal,4392,428.93,588.95,19.83,8.52,8.69
+uji,lightgbm_cuaca_sempurna,cuaca_sempurna,4392,411.59,558.64,19.03,12.21,12.38
+uji,xgboost_cuaca_sempurna,cuaca_sempurna,4392,433.52,573.64,20.04,7.54,7.71
+uji,itransformer,tanpa kovariat,4392,407.58,554.69,18.84,13.07,13.23
+uji,lstm,cuaca_sempurna,4392,482.13,663.33,22.29,-2.83,-2.64
+uji,nhits,cuaca_sempurna,4392,462.58,635.12,21.39,1.34,1.53
+uji,patchtst,tanpa kovariat,4392,447.81,611.7,20.7,4.49,4.67
+uji,tft,cuaca_sempurna,4392,490.01,661.18,22.65,-4.51,-4.31
+uji,tide,cuaca_sempurna,4392,456.45,602.42,21.1,2.65,2.83
+uji,ensemble,campuran,4392,419.76,569.74,19.41,10.47,10.64

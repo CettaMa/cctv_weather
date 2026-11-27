@@ -1,0 +1,23 @@
+﻿fold: [(15826, 1234), (17292, 3654), (21450, 2602), (24690, 4504)]
+LightGBM CV MAE 277.5 {'objective': 'l2', 'learning_rate': 0.05938293839598147, 'num_leaves': 8, 'min_child_samples': 77, 'feature_fraction': 0.8600936078870743, 'bagging_fraction': 0.6997412774223454, 'lambda_l2': 0.07797920042164048, 'bagging_freq': 1, 'metric': 'l1'} 140
+XGBoost CV MAE 277.3 {'objective': 'reg:squarederror', 'learning_rate': 0.012186337156567832, 'max_depth': 3, 'min_child_weight': 1.6966902341195678, 'subsample': 0.7871457938174607, 'colsample_bytree': 0.7660399933283533, 'reg_lambda': 0.005356805606325968} 568
+validasi baris latih 29602 baris evaluasi 1812
+  persistence                  {'n': 1812, 'MAE': 709.4, 'RMSE': 1105.3, 'WAPE': 26.9}
+  seasonal_naive               {'n': 1812, 'MAE': 418.5, 'RMSE': 585.3, 'WAPE': 15.8}
+  profil_historis              {'n': 1812, 'MAE': 395.7, 'RMSE': 567.1, 'WAPE': 15.0}
+  lightgbm_tanpa_cuaca         {'n': 1812, 'MAE': 387.7, 'RMSE': 565.7, 'WAPE': 14.7}
+  xgboost_tanpa_cuaca          {'n': 1812, 'MAE': 379.9, 'RMSE': 547.6, 'WAPE': 14.4}
+  lightgbm_cuaca_asal          {'n': 1812, 'MAE': 384.2, 'RMSE': 555.6, 'WAPE': 14.5}
+  xgboost_cuaca_asal           {'n': 1812, 'MAE': 380.6, 'RMSE': 549.9, 'WAPE': 14.4}
+  lightgbm_cuaca_sempurna      {'n': 1812, 'MAE': 375.4, 'RMSE': 551.4, 'WAPE': 14.2}
+  xgboost_cuaca_sempurna       {'n': 1812, 'MAE': 375.3, 'RMSE': 542.1, 'WAPE': 14.2}
+uji baris latih 31606 baris evaluasi 4392
+  persistence                  {'n': 4392, 'MAE': 764.3, 'RMSE': 1086.1, 'WAPE': 35.3}
+  seasonal_naive               {'n': 4392, 'MAE': 469.7, 'RMSE': 634.7, 'WAPE': 21.7}
+  profil_historis              {'n': 4392, 'MAE': 468.9, 'RMSE': 634.8, 'WAPE': 21.7}
+  lightgbm_tanpa_cuaca         {'n': 4392, 'MAE': 427.3, 'RMSE': 585.7, 'WAPE': 19.8}
+  xgboost_tanpa_cuaca          {'n': 4392, 'MAE': 428.3, 'RMSE': 586.8, 'WAPE': 19.8}
+  lightgbm_cuaca_asal          {'n': 4392, 'MAE': 425.2, 'RMSE': 582.0, 'WAPE': 19.7}
+  xgboost_cuaca_asal           {'n': 4392, 'MAE': 428.9, 'RMSE': 588.9, 'WAPE': 19.8}
+  lightgbm_cuaca_sempurna      {'n': 4392, 'MAE': 411.6, 'RMSE': 558.6, 'WAPE': 19.0}
+  xgboost_cuaca_sempurna       {'n': 4392, 'MAE': 433.5, 'RMSE': 573.6, 'WAPE': 20.0}

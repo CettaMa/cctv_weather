@@ -1,5 +1,5 @@
 CCTV_Name,Location,Provider,m3u8_URL,Sample_Downloaded,Sample_File,Sample_Size_Bytes,Sample_Error,Validated_At_UTC
-CCTV ALUN-ALUN 01 - BANCEUY,"-6.921062009055424,107.60639444644745",DAHUA,https://pelindung.bandung.go.id:3443/video/DAHUA/DepanTo.m3u8,NO,,,Not sampled (added via CCTV link scrape),2026-11-20T09:43:48+00:00
+CCTV ALUN-ALUN 01 - BANCEUY,"-6.921062009055424,107.60639444644745",DISKOMINFO,https://pelindung.bandung.go.id:3443/video/DAHUA/DepanTo.m3u8,NO,,,Not sampled (added via CCTV link scrape),2026-11-20T09:43:48+00:00
 CCTV ALUN-ALUN 02 - ASIA AFRIKA,"-6.92109329535628,107.60658220109161",DISKOMINFO,https://pelindung.bandung.go.id:3443/video/DAHUA/DepanTop.m3u8,NO,,,Not sampled (added via CCTV link scrape),2026-11-20T09:43:48+00:00
 CCTV BATAS KOTA 01,"-6.910573,107.569273",DISKOMINFO,https://pelindung.bandung.go.id:3443/video/DAHUA/BatasKo.m3u8,NO,,,Not sampled (added via CCTV link scrape),2026-09-20T02:56:32+00:00
 CCTV BATAS KOTA 02,"-6.910573,107.568274",DISKOMINFO,https://pelindung.bandung.go.id:3443/video/DAHUA/cibeurem.m3u8,NO,,,Not sampled (added via CCTV link scrape),2026-09-20T02:56:32+00:00

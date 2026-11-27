@@ -1,0 +1,9 @@
+arah,respon,jam_hujan,jam_kering,median_res_hujan,median_res_kering,p_mannwhitney,median_level_hujan
+menjauhi,flow,20,111,-32.9752,-12.4282,0.9566,3372.0512
+menjauhi,porsi_motor,20,111,0.001,-0.0041,0.8553,0.599
+menjauhi,rasio_berhenti,20,111,0.0109,0.0124,0.5625,0.0229
+menjauhi,okupansi,20,111,0.3708,0.0581,0.516,10.5852
+mendekati,flow,20,111,35.6805,-24.0382,0.6199,2947.9824
+mendekati,porsi_motor,20,111,0.0142,0.0133,0.8553,0.4969
+mendekati,rasio_berhenti,20,111,-0.0008,0.0042,0.7273,0.0833
+mendekati,okupansi,20,111,-0.2003,0.117,0.342,6.9462

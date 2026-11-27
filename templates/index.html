@@ -13,6 +13,7 @@
   <!-- Leaflet & GIS Libraries -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css" />
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@4/dist/maplibre-gl.css" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='buahbatu_forecast.css', v='4') }}" />
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
@@ -2381,6 +2382,7 @@
             .bindPopup(popupHtml(item));
           
           marker.on('click', () => {
+            window.dispatchEvent(new CustomEvent('cctv:select', { detail: item }));
             if (highlightedCone) { map.removeLayer(highlightedCone); highlightedCone = null; }
             if (item.bearing !== undefined && item.bearing !== null) {
               const coneCoords = generateVisionConePolygon(item.lat, item.lng, item.bearing, item.fov || 60, 75);
@@ -4032,5 +4034,6 @@
       }
     });
   </script>
+  <script src="{{ url_for('static', filename='buahbatu_forecast.js', v='4') }}"></script>
 </body>
 </html>

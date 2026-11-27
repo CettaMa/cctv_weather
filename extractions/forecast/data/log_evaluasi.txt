@@ -1,0 +1,79 @@
+﻿tahap                   model       skenario    n    MAE    RMSE  WAPE  skill_vs_profil_pct  skill_vs_seasonal_pct
+  uji            itransformer tanpa kovariat 4392 407.58  554.69 18.84                13.07                  13.23
+  uji lightgbm_cuaca_sempurna cuaca_sempurna 4392 411.59  558.64 19.03                12.21                  12.38
+  uji                ensemble       campuran 4392 419.76  569.74 19.41                10.47                  10.64
+  uji     lightgbm_cuaca_asal     cuaca_asal 4392 425.16  581.99 19.66                 9.32                   9.49
+  uji    lightgbm_tanpa_cuaca    tanpa_cuaca 4392 427.34  585.70 19.76                 8.85                   9.03
+  uji     xgboost_tanpa_cuaca    tanpa_cuaca 4392 428.26  586.77 19.80                 8.66                   8.83
+  uji      xgboost_cuaca_asal     cuaca_asal 4392 428.93  588.95 19.83                 8.52                   8.69
+  uji  xgboost_cuaca_sempurna cuaca_sempurna 4392 433.52  573.64 20.04                 7.54                   7.71
+  uji                patchtst tanpa kovariat 4392 447.81  611.70 20.70                 4.49                   4.67
+  uji                    tide cuaca_sempurna 4392 456.45  602.42 21.10                 2.65                   2.83
+  uji                   nhits cuaca_sempurna 4392 462.58  635.12 21.39                 1.34                   1.53
+  uji         profil_historis              - 4392 468.85  634.83 21.68                 0.00                   0.19
+  uji          seasonal_naive              - 4392 469.75  634.67 21.72                -0.19                   0.00
+  uji                    lstm cuaca_sempurna 4392 482.13  663.33 22.29                -2.83                  -2.64
+  uji                     tft cuaca_sempurna 4392 490.01  661.18 22.65                -4.51                  -4.31
+  uji             persistence              - 4392 764.25 1086.13 35.33               -63.00                 -62.69
+{
+ "varian_deep": {
+  "itransformer": {
+   "dipilih": "itransformer_in288",
+   "mae_validasi": {
+    "itransformer_in144": 458.9,
+    "itransformer_in288": 444.5
+   }
+  },
+  "lstm": {
+   "dipilih": "lstm_in144",
+   "mae_validasi": {
+    "lstm_in144": 442.1,
+    "lstm_in288": 493.2
+   }
+  },
+  "nhits": {
+   "dipilih": "nhits_in144",
+   "mae_validasi": {
+    "nhits_in144": 470.5,
+    "nhits_in288": 476.0
+   }
+  },
+  "patchtst": {
+   "dipilih": "patchtst_in144",
+   "mae_validasi": {
+    "patchtst_in144": 511.5,
+    "patchtst_in288": 523.3
+   }
+  },
+  "tft": {
+   "dipilih": "tft_in144",
+   "mae_validasi": {
+    "tft_in144": 414.6,
+    "tft_in288": 484.1
+   }
+  },
+  "tide": {
+   "dipilih": "tide_in288",
+   "mae_validasi": {
+    "tide_in144": 647.0,
+    "tide_in288": 407.0
+   }
+  }
+ },
+ "ensemble_dari": [
+  "xgboost_cuaca_sempurna",
+  "lightgbm_cuaca_sempurna",
+  "xgboost_tanpa_cuaca"
+ ],
+ "terbaik_uji": "itransformer",
+ "diebold_mariano": {
+  "itransformer_vs_profil_historis": {
+   "stat": -3.77,
+   "p": 0.0002
+  },
+  "itransformer_vs_seasonal_naive": {
+   "stat": -3.92,
+   "p": 0.0001
+  }
+ }
+}
