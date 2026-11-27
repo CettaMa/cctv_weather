@@ -3,6 +3,17 @@
 Paket `pkji/` menggantikan `yolo_onnx_pkji2_video.py`. Script lama tidak diubah
 dan tetap bisa dipakai sebagai pembanding.
 
+## Lisensi model
+
+`models/v-1-1.onnx` adalah model deteksi **Ultralytics YOLO26n** (kelas motor, mobil, truk, orang,
+bis) yang dilatih pada data Terusan Buah Batu, diekspor dengan Ultralytics 8.4.209 pada
+12 November 2026. Menurut metadata di dalam berkas, model ini berlisensi
+**[AGPL-3.0](https://www.gnu.org/licenses/agpl-3.0.html)**
+([ketentuan Ultralytics](https://ultralytics.com/license)). Siapa pun yang memakai atau
+membagikannya, termasuk sebagai bagian dari layanan jaringan, perlu mengikuti syarat lisensi
+tersebut; untuk penggunaan di luar syarat itu Ultralytics menyediakan lisensi komersial. Paket
+Python `ultralytics` yang dipakai kode di folder ini juga berlisensi AGPL-3.0.
+
 ## Instalasi
 
 Butuh GPU NVIDIA dan [uv](https://docs.astral.sh/uv/). Jalankan dari folder `extractions`.
