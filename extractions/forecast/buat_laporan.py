@@ -209,12 +209,12 @@ li {{ margin-bottom:6px; }}
 
 <h2>1. Kesimpulan</h2>
 <div class="kotak"><ul>
-<li><b>Rekomendasi: LightGBM.</b> Tanpa ramalan cuaca, MAE uji {num(uji.loc[lgb_real, 'MAE'])} kend/jam dengan cuaca saat asal dan {num(uji.loc['lightgbm_tanpa_cuaca', 'MAE'])} tanpa cuaca, sekitar {num(gain, 0)}% lebih baik daripada profil historis ({num(uji.loc['profil_historis', 'MAE'])}). Bila ramalan cuaca per jam tersedia, cuaca pada waktu target menurunkan MAE sampai {num(uji.loc['lightgbm_cuaca_sempurna', 'MAE'])} (batas atas; MAE validasi {num(val.loc['lightgbm_cuaca_sempurna', 'MAE'])}, termasuk terbaik). LightGBM konsisten di validasi dan uji, dan dilatih dalam hitungan detik. Angka terendah di uji dicapai {label(best)} (MAE {num(uji.loc[best, 'MAE'])}; {dm_txt}).</li>
+<li><b>Rekomendasi: LightGBM.</b> Tanpa ramalan cuaca, MAE uji {num(uji.loc[lgb_real, 'MAE'])} kend/jam dengan cuaca saat asal dan {num(uji.loc['lightgbm_tanpa_cuaca', 'MAE'])} tanpa cuaca, sekitar {num(gain, 0)}% lebih baik daripada profil historis ({num(uji.loc['profil_historis', 'MAE'])}). Bila ramalan cuaca per jam tersedia, cuaca pada waktu target menurunkan MAE sampai {num(uji.loc['lightgbm_cuaca_sempurna', 'MAE'])} (batas atas; di validasi MAE-nya {num(val.loc['lightgbm_cuaca_sempurna', 'MAE'])} dibanding {num(val.loc['lightgbm_tanpa_cuaca', 'MAE'])} tanpa cuaca, jadi manfaatnya tidak konsisten). LightGBM konsisten di validasi dan uji, dan dilatih dalam hitungan detik. Angka terendah di uji dicapai {label(best)} (MAE {num(uji.loc[best, 'MAE'])}; {dm_txt}).</li>
 <li><b>Keunggulan atas profil historis kecil (sekitar 10%).</b> Dengan 17 hari data, pola jam x jenis hari sudah menjelaskan sebagian besar variasi; data terbaru paling membantu pada horizon 1-3 jam. Persistence (nilai 5 menit terakhir) paling buruk karena arus 5 menit sangat berisik.</li>
 <li>{deep_txt} Data latih hanya {num(R['menjauhi']['teramati_per_bagian']['latih'])} bin teramati per arah.</li>
 <li><b>Hubungan cuaca dan arus lemah dan belum meyakinkan.</b> Korelasi residual arus dengan hujan {num(kor_flow[(kor_flow.cuaca == 'hujan') & (kor_flow.arah == 'menjauhi')].rho.iloc[0], 2)} (menjauhi) dan {num(kor_flow[(kor_flow.cuaca == 'hujan') & (kor_flow.arah == 'mendekati')].rho.iloc[0], 2)} (mendekati); {'tidak ada' if sig.empty else str(len(sig))} dari {len(KOR)} uji korelasi yang signifikan setelah koreksi uji berganda. Hanya {CU['jam_hujan_ge_0.5']['menjauhi']} jam terekam yang hujannya >= 0,5 mm/jam.</li>
 <li><b>Jeda hujan ke arus (bagian 5.4)</b>: dari video ditemukan 2 awal hujan yang terekam. Hujan deras mendadak (16 Nov) berdampak dalam 0-3 menit; hujan yang menguat bertahap (19 Nov) berdampak sekitar 10-25 menit kemudian. Dua kejadian belum cukup untuk menyimpulkan pola umum.</li>
-<li><b>Cuaca hanya membantu bila cuaca di waktu target diketahui.</b> Fitur cuaca saat asal menurunkan MAE LightGBM {num(a1['mae_b'] - a1['mae_a'], 1)} (p {num(a1['p'], 3)}); cuaca aktual pada waktu target menurunkan {num(a2['mae_b'] - a2['mae_a'], 1)} (p {num(a2['p'], 3)}). Saat target hujan, MAE turun dari {num(hj['lightgbm_tanpa_cuaca'])} ke {num(hj['lightgbm_cuaca_sempurna'])}, tetapi itu dari sedikit kejadian hujan. Fitur cuaca menyumbang {num(abl['porsi_kontribusi_cuaca_pct'], 1)}% kontribusi prediksi.</li>
+<li><b>Manfaat cuaca di set uji hanya jelas bila cuaca di waktu target diketahui.</b> Fitur cuaca saat asal menurunkan MAE LightGBM {num(a1['mae_b'] - a1['mae_a'], 1)} (p {num(a1['p'], 3)}); cuaca aktual pada waktu target menurunkan {num(a2['mae_b'] - a2['mae_a'], 1)} (p {num(a2['p'], 3)}). Saat target hujan, MAE turun dari {num(hj['lightgbm_tanpa_cuaca'])} ke {num(hj['lightgbm_cuaca_sempurna'])}, tetapi itu dari sedikit kejadian hujan. Fitur cuaca menyumbang {num(abl['porsi_kontribusi_cuaca_pct'], 1)}% kontribusi prediksi.</li>
 </ul></div>
 {fig('f02_mae_model', 'MAE set uji, semua horizon dan kedua arah. Abu-abu: baseline.', narrow=True)}
 
@@ -222,7 +222,7 @@ li {{ margin-bottom:6px; }}
 <p>Sumber: <code>eda/data/dataset_menit_berflag.csv</code>. Langkah di <code>forecast/siapkan_data.py</code>:</p>
 <ul>
 <li><b>Tipe data</b>: <code>menit</code> ke datetime zona Asia/Jakarta, kolom flag dan <code>layak</code> ke boolean, <code>arah</code> dan kondisi ke kategori, angka ke float32.</li>
-<li><b>Hanya menit layak</b> (dari EDA). Bin 5 menit dianggap teramati bila berisi minimal 3 menit layak; nilainya rata-rata berbobot durasi sampel.</li>
+<li><b>Hanya menit layak</b> (dari EDA; menit rekaman ulangan sudah dikeluarkan, lihat <code>eda/pindai_ulang.py</code>). Bin 5 menit dianggap teramati bila berisi minimal 3 menit layak; nilainya rata-rata berbobot durasi sampel.</li>
 <li><b>Grid reguler</b>: {num(R['bin_total_per_arah'])} bin per arah, {num(R['menjauhi']['teramati'])} teramati ({num(100 * R['menjauhi']['teramati'] / R['bin_total_per_arah'], 1)}%).</li>
 <li><b>Imputasi terbatas</b>: celah sampai {MAX_FILL * 5} menit yang diapit dua bin teramati diisi profil musiman + interpolasi linear residual ({num(R['menjauhi']['diimputasi'])} bin per arah). {num(R['menjauhi']['kosong'])} bin dalam celah panjang tetap kosong dan diberi penanda <code>panjang_celah</code> / <code>langkah_sejak_obs</code>. Nilai isian hanya dipakai sebagai input; target dan evaluasi selalu memakai bin teramati.</li>
 <li><b>Model deep</b> butuh input tanpa lubang: celah panjang diisi profil musiman dari data sebelum cutoff, kolom <code>isian</code> memberi tahu model mana yang asli, dan <code>available_mask</code> membuat loss tidak dihitung pada isian.</li>
@@ -231,7 +231,7 @@ li {{ margin-bottom:6px; }}
 
 <h3>2.1 Split kronologis dan cross validation</h3>
 {split}
-<p>Batas dipilih agar bin teramati sekitar 73/11/16%; 21-22 dan 24-26 November banyak menit tidak layak. Titik asal ramalan hanya bin teramati (kamera sedang merekam), dan target harus teramati.</p>
+<p>Batas dipilih agar bin teramati sekitar 73/10/16%; 21-22 dan 24-26 November banyak menit tidak layak. Titik asal ramalan hanya bin teramati (kamera sedang merekam), dan target harus teramati.</p>
 <p>Tuning memakai CV rolling-origin dengan jendela mengembang di dalam bagian latih saja, supaya validasi tetap bersih untuk memilih varian dan ensemble. Baris latih tiap fold hanya yang targetnya sebelum awal fold (purged).</p>
 {cv}
 {cv_mae}
@@ -248,7 +248,7 @@ li {{ margin-bottom:6px; }}
 </ul>
 {hasil_tabel}
 <p class="sub">Skill = penurunan MAE terhadap profil historis. Semua model dinilai pada {num(EV['baris']['uji'])} baris yang sama ({num(EV['asal_uji'])} titik asal).</p>
-{fig('f01_mae_horizon', 'MAE per horizon di set uji. Tiap titik dari sekitar 100-280 baris, jadi garisnya bergelombang. Persistence tidak digambar (MAE naik sampai sekitar 1.600).')}
+{fig('f01_mae_horizon', 'MAE per horizon di set uji. Tiap titik dari sekitar 70-390 baris, jadi garisnya bergelombang. Persistence tidak digambar (MAE naik sampai sekitar 1.700).')}
 {kelompok}
 {siang}
 {fig('f03_contoh_ramalan', 'Contoh ramalan 6 jam dari satu titik asal per arah. Titik: arus teramati (2 jam sebelum asal sampai 6 jam setelahnya).')}

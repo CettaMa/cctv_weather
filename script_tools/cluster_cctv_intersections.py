@@ -130,18 +130,6 @@ def fetch_osm_road_network(
         with cache_path.open("r", encoding="utf-8") as f:
             return json.load(f)
 
-    # Check scratch fallback
-    scratch_cache = Path("C:/Users/Ichi/.gemini/antigravity-cli/brain/2b1010d7-c65e-4d8f-aea9-40b13f3d8093/scratch/osm_bandung_roads.json")
-    if scratch_cache.exists() and not force_refresh and scratch_cache.stat().st_size > 10000:
-        print(f"[OSM] Menggunakan data OpenStreetMap dari {scratch_cache}...")
-        with scratch_cache.open("r", encoding="utf-8") as f:
-            data = json.load(f)
-            if cache_path:
-                cache_path.parent.mkdir(parents=True, exist_ok=True)
-                with cache_path.open("w", encoding="utf-8") as out_f:
-                    json.dump(data, out_f)
-            return data
-
     min_lat, min_lon, max_lat, max_lon = bbox
     overpass_query = f"""
 [out:json][timeout:180];

@@ -51,7 +51,7 @@
      "n_0_10": 6,
      "sesudah_10_35": null,
      "n_10_35": 0,
-     "hari_lain_median": 4.09,
+     "hari_lain_median": 4.083,
      "menit_keluar_rentang": null
     },
     "avg_stopped_ratio": {
@@ -69,7 +69,7 @@
      "n_0_10": 6,
      "sesudah_10_35": null,
      "n_10_35": 0,
-     "hari_lain_median": 0.593215664644236,
+     "hari_lain_median": 0.5960174577195854,
      "menit_keluar_rentang": 0.0
     }
    }
@@ -86,8 +86,8 @@
      "n_0_10": 6,
      "sesudah_10_35": null,
      "n_10_35": 0,
-     "hari_lain_median": 2869.2,
-     "menit_keluar_rentang": null
+     "hari_lain_median": 2888.2,
+     "menit_keluar_rentang": 2.0
     },
     "average_active_total": {
      "sebelum_30": 3.0287999999999995,
@@ -95,7 +95,7 @@
      "n_0_10": 6,
      "sesudah_10_35": null,
      "n_10_35": 0,
-     "hari_lain_median": 2.871,
+     "hari_lain_median": 2.873,
      "menit_keluar_rentang": 1.0
     },
     "avg_stopped_ratio": {
@@ -113,7 +113,7 @@
      "n_0_10": 6,
      "sesudah_10_35": null,
      "n_10_35": 0,
-     "hari_lain_median": 0.5345640219952867,
+     "hari_lain_median": 0.5393307257714037,
      "menit_keluar_rentang": 3.0
     }
    }
@@ -130,7 +130,7 @@
      "n_0_10": 10,
      "sesudah_10_35": 4334.86,
      "n_10_35": 25,
-     "hari_lain_median": 4018.85,
+     "hari_lain_median": 4028.7,
      "menit_keluar_rentang": 26.0
     },
     "average_active_total": {
@@ -139,7 +139,7 @@
      "n_0_10": 10,
      "sesudah_10_35": 4.9828,
      "n_10_35": 25,
-     "hari_lain_median": 5.1385000000000005,
+     "hari_lain_median": 4.871,
      "menit_keluar_rentang": null
     },
     "avg_stopped_ratio": {
@@ -148,7 +148,7 @@
      "n_0_10": 10,
      "sesudah_10_35": 0.00792,
      "n_10_35": 25,
-     "hari_lain_median": 0.002,
+     "hari_lain_median": 0.003,
      "menit_keluar_rentang": null
     },
     "porsi_motor": {
@@ -157,7 +157,7 @@
      "n_0_10": 10,
      "sesudah_10_35": 0.6323121130276121,
      "n_10_35": 25,
-     "hari_lain_median": 0.6338517720988772,
+     "hari_lain_median": 0.6501070181367579,
      "menit_keluar_rentang": null
     }
    }
@@ -174,7 +174,7 @@
      "n_0_10": 10,
      "sesudah_10_35": 2475.08,
      "n_10_35": 25,
-     "hari_lain_median": 3032.3500000000004,
+     "hari_lain_median": 3073.0,
      "menit_keluar_rentang": 23.0
     },
     "average_active_total": {
@@ -183,7 +183,7 @@
      "n_0_10": 10,
      "sesudah_10_35": 2.13104,
      "n_10_35": 25,
-     "hari_lain_median": 3.1805,
+     "hari_lain_median": 3.184,
      "menit_keluar_rentang": 10.0
     },
     "avg_stopped_ratio": {
@@ -201,8 +201,8 @@
      "n_0_10": 10,
      "sesudah_10_35": 0.5092606512403779,
      "n_10_35": 25,
-     "hari_lain_median": 0.543160240780464,
-     "menit_keluar_rentang": 41.0
+     "hari_lain_median": 0.5517529215358932,
+     "menit_keluar_rentang": 40.0
     }
    }
   }

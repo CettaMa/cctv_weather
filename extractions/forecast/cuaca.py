@@ -26,7 +26,8 @@ from .common import DATA, LAT, LON, TZ
 
 AWAL, AKHIR = "2026-11-09", "2026-11-26"
 WIB = timezone(timedelta(hours=7))
-ENV_DEFAULT = Path(r"C:\Users\Ichi\Documents\thesis\forecasting\.env")
+# folder `thesis` sejajar dengan folder proyek
+ENV_DEFAULT = Path(__file__).resolve().parents[3] / "thesis" / "forecasting" / ".env"
 
 OM_URL = "https://historical-forecast-api.open-meteo.com/v1/forecast"
 OM_VARS = {"precipitation": "hujan", "temperature_2m": "suhu", "relative_humidity_2m": "rh",

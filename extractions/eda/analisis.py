@@ -1,6 +1,6 @@
 """EDA dataset menit: gabung dua arah, beri flag mutu, buat grafik dan statistik.
 
-Jalankan dari folder `extractions`, setelah `eda/pindai_mutu.py`:
+Jalankan dari folder `extractions`, setelah `eda/pindai_mutu.py` dan `eda/pindai_ulang.py`:
     ..\\.venv\\Scripts\\python.exe eda\\analisis.py      (butuh pandas dan matplotlib)
 """
 import json
@@ -48,6 +48,9 @@ def save(fig, name):
 # ------------------------------------------------------------------ data
 corrupt = pd.read_csv(DATA / "frame_rusak_per_menit.csv", parse_dates=["menit"])
 parked = pd.read_csv(DATA / "parkir_per_menit.csv", parse_dates=["menit"])
+repeat = pd.read_csv(DATA / "ulang_per_menit.csv", parse_dates=["menit"])
+# menit rekaman ulangan: aturan yang sama dengan forecast/siapkan_data.py
+REPEATED = set(repeat[(repeat.porsi_ulang > 0.5) & (repeat.terbaca >= 2)].menit)
 frames = {}
 for key in DIRS:
     m = pd.read_csv(ROOT / f"results_{key}" / "subsession_1min_pkji2.csv", encoding="utf-8-sig")
@@ -61,7 +64,9 @@ for key in DIRS:
     m["flag_menit_pendek"] = m.actual_sample_duration_seconds < MIN_SECONDS
     m["flag_tanpa_arus"] = m.est_flow_veh_per_hour.isna()
     m["flag_parkir"] = m.porsi_parkir > MAX_PARKED
-    m["layak"] = ~(m.flag_cakupan_rendah | m.flag_frame_rusak | m.flag_menit_pendek | m.flag_tanpa_arus)
+    m["flag_ulang"] = m.menit.isin(REPEATED)
+    m["layak"] = ~(m.flag_cakupan_rendah | m.flag_frame_rusak | m.flag_menit_pendek | m.flag_tanpa_arus
+                   | m.flag_ulang)
     m["jam"] = m.menit.dt.hour
     m["tanggal"] = m.menit.dt.date
     m["akhir_pekan"] = m.menit.dt.dayofweek >= 5
@@ -70,7 +75,7 @@ for key in DIRS:
 both = pd.concat(frames.values(), ignore_index=True)
 
 KEEP = ["menit", "arah", "video_file", "layak", "flag_cakupan_rendah", "flag_frame_rusak", "flag_menit_pendek",
-        "flag_tanpa_arus", "flag_parkir", "cakupan", "porsi_rusak", "porsi_parkir", "actual_sample_duration_seconds",
+        "flag_tanpa_arus", "flag_parkir", "flag_ulang", "cakupan", "porsi_rusak", "porsi_parkir", "actual_sample_duration_seconds",
         "average_active_motor", "average_active_mobil", "average_active_bus", "average_active_truk",
         "average_active_total", "avg_smp_frame", "avg_roi_occupancy_pct", "avg_pixel_occupancy_pct",
         "est_flow_veh_per_hour", "est_q_smp_per_hour", "avg_dj_flow", "avg_dj_spatial", "avg_dj_effective",
@@ -115,7 +120,7 @@ for key, m in frames.items():
     }
     # arus relatif terhadap median jam dan jenis hari yang sama (dari menit bermutu baik)
     base = ok[(ok.cakupan >= 0.98) & (ok.porsi_rusak == 0)].groupby(["jam", "akhir_pekan"]).est_flow_veh_per_hour.median()
-    rel = m[(~m.flag_menit_pendek) & (~m.flag_tanpa_arus)].join(base.rename("acuan"), on=["jam", "akhir_pekan"])
+    rel = m[(~m.flag_menit_pendek) & (~m.flag_tanpa_arus) & (~m.flag_ulang)].join(base.rename("acuan"), on=["jam", "akhir_pekan"])
     rel["relatif"] = rel.est_flow_veh_per_hour / rel.acuan
     rel["k_cakupan"] = pd.cut(rel.cakupan, [0, .7, .8, .9, .98, 1.01], right=False,
                               labels=["<70%", "70-80%", "80-90%", "90-98%", ">=98%"])
@@ -126,7 +131,8 @@ for key, m in frames.items():
 # perbandingan di dalam video yang sama: menit bercakupan rendah vs menit utuh
 LOW_BINS = ["<80%", "80-90%", "90-98%"]
 for key, m in frames.items():
-    x = m[~m.flag_menit_pendek & ~m.flag_tanpa_arus & ~m.video_file.str.contains("|", regex=False)]
+    x = m[~m.flag_menit_pendek & ~m.flag_tanpa_arus & ~m.flag_ulang
+          & ~m.video_file.str.contains("|", regex=False)]
     x = x.assign(k=pd.cut(x.cakupan, [0, .8, .9, .98, 1.01], right=False, labels=LOW_BINS + ["utuh"]))
     g = x.groupby(["video_file", "k"], observed=True)[["est_flow_veh_per_hour", "average_active_total"]].mean()
     full = g.xs("utuh", level="k")

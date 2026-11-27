@@ -76,6 +76,7 @@ flags = table(["Flag", "Arti", "Menjauhi", "Mendekati"], [
         ("frame_rusak", "lebih dari 10% frame contoh rusak berat"),
         ("menit_pendek", "durasi sampel di bawah 45 detik"),
         ("tanpa_arus", "arus belum bisa dihitung"),
+        ("ulang", "rekaman lama diputar ulang (jam pada gambar sudah pernah terekam)"),
         ("parkir", "mobil parkir ada di ROI lebih dari 10% waktu (tidak mengurangi status layak)"),
     ]
 ])
@@ -130,6 +131,7 @@ li {{ margin-bottom:6px; }}
 <li><b>File hasil lengkap dan konsisten.</b> Semua {A['video']} video punya baris di kedua arah, tanpa menit ganda.</li>
 <li><b>{pct(A['layak'], A['menit'])} menit layak dipakai.</b> Penyebab utama sisanya adalah frame yang hilang dari video sumber, terutama sejak 21 November.</li>
 <li><b>Frame hilang tampaknya membuat arus kurang hitung.</b> Pada video yang sama, menit dengan frame di bawah 80% mencatat arus {num(100 * (1 - w[0]['<80%']['arus']))}% (menjauhi) dan {num(100 * (1 - w[1]['<80%']['arus']))}% (mendekati) lebih rendah daripada menit utuh, sedangkan kendaraan yang terlihat di ROI hanya {num(100 * (1 - w[0]['<80%']['di_roi']))}% dan {num(100 * (1 - w[1]['<80%']['di_roi']))}% lebih sedikit.</li>
+<li><b>{num(A['flag']['ulang'])} menit berisi rekaman lama yang diputar ulang</b> dan dikeluarkan dari menit layak.</li>
 <li><b>ROI arah mendekati menangkap mobil parkir</b> di tepi kanan. Pada {num(na['menit'])} menit malam yang terdampak, rasio berhenti {num(na['rasio_berhenti'], 2)} dibanding {num(nb['rasio_berhenti'], 2)} pada menit malam lainnya.</li>
 <li><b>Angka absolut belum bisa dianggap tervalidasi.</b> Jumlah lajur dan panjang ROI masih nilai bawaan, dan arus baru dibandingkan dengan satu klip manual 60 detik.</li>
 <li><b>Label kondisi lalu lintas sangat timpang</b>: Macet hanya {A['kondisi'].get('Macet (Congestion)', 0)} menit di arah menjauhi dan tidak ada di arah mendekati.</li>
@@ -144,7 +146,7 @@ li {{ margin-bottom:6px; }}
 
 <h3>2.1 Aturan mutu</h3>
 {flags}
-<p>Menit <b>layak</b> adalah menit tanpa empat flag pertama. Ambangnya pilihan analisis ini dan bisa diubah di <code>eda/analisis.py</code>.</p>
+<p>Menit <b>layak</b> adalah menit tanpa lima flag pertama. Ambangnya pilihan analisis ini dan bisa diubah di <code>eda/analisis.py</code>.</p>
 {fig('02_mutu_per_tanggal', 'Mutu per tanggal. Sampai 20 November sebagian besar menit layak; sejak 21 November turun tajam.')}
 
 <h3>2.2 Frame hilang dan dampaknya</h3>
@@ -153,9 +155,12 @@ li {{ margin-bottom:6px; }}
 {bias}
 <p>Arus turun lebih banyak daripada jumlah kendaraan yang terlihat di ROI. Selisih itu konsisten dengan lintasan garis hitung yang terlewat saat ada celah. Perbandingan ini asosiasi, bukan eksperimen terkontrol. Arus tidak saya koreksi.</p>
 
-<h3>2.3 Gambar rusak</h3>
+<h3>2.3 Gambar rusak dan rekaman ulangan</h3>
+<p>Sebagian video memutar ulang cuplikan yang sudah pernah terekam. Jam pada gambar dibaca tiap 10 detik; menit yang mayoritas jamnya sudah pernah muncul ditandai <code>flag_ulang</code> ({num(A['flag']['ulang'])} menit, termasuk yang juga kena flag lain).</p>
 <p>Satu frame tiap 5 detik diperiksa pada semua video. Kerusakan berat jarang: hanya {A['flag']['frame_rusak']} menit melewati ambang. Detektornya heuristik dan hanya menangkap kerusakan yang jelas.</p>
 {fig('13_contoh_rusak', 'Contoh frame rusak berat (24 November, dini hari).', True)}
+
+<p>Streaming yang rusak sebagian (galat dekode H.264) tidak tertangkap detektor ini dan belum difilter. Arus pada periode tersebut dapat lebih rendah dari kenyataan.</p>
 
 <h3>2.4 Mobil parkir di ROI mendekati</h3>
 {fig('12_contoh_parkir', 'Mobil di tepi kanan (kotak kuning) berada di luar jalur, tetapi titik bawah kotaknya masuk ROI ungu.', True)}
@@ -217,7 +222,7 @@ li {{ margin-bottom:6px; }}
 <ul>
 <li><code>eda/data/dataset_menit_berflag.csv</code>: gabungan dua arah, satu baris per menit per arah, dengan flag mutu.</li>
 <li><code>eda/data/statistik.json</code>: semua angka ringkasan.</li>
-<li><code>eda/pindai_mutu.py</code>, <code>eda/analisis.py</code>, <code>eda/buat_laporan.py</code>: skrip untuk mengulang.</li>
+<li><code>eda/pindai_mutu.py</code>, <code>eda/pindai_ulang.py</code>, <code>eda/analisis.py</code>, <code>eda/buat_laporan.py</code>: skrip untuk mengulang.</li>
 </ul>
 </main></body></html>"""
 

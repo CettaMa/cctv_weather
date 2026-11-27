@@ -34,4 +34,4 @@ roi_annotator/samples/
 roi_packages/
 
 # Pengaturan lokal
-.claude/settings.local.json
+.claude/

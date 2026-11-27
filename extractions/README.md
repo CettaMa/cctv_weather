@@ -175,6 +175,10 @@ Setelah ekstraksi kedua arah selesai (`results_menjauhi/`, `results_mendekati/`)
 ```
 
 ```powershell
+.venv\Scripts\python.exe eda\pindai_ulang.py
+```
+
+```powershell
 ..\.venv\Scripts\python.exe eda\analisis.py
 ```
 
@@ -241,10 +245,10 @@ menit di titik CCTV (butuh `forecast.cuaca --sumber openmeteo`). Endpoint:
 `../static/buahbatu_forecast.js` dan `.css`; buka langsung dengan `/?ramalan=buahbatu`. Kondisi
 Lancar/Padat/Macet di panel adalah DJ = SMP/jam ÷ kapasitas bawaan PKJI, jadi hanya perkiraan.
 
-Layer peta: lingkaran hujan berjari-jari 2 km (nilai satu titik, bukan peta sebaran) dan heatmap
+Layer peta: lingkaran hujan berjari-jari 1 km (nilai satu titik, bukan peta sebaran) dan heatmap
 kepadatan selebar badan Jalan Buah Batu dari `../static/buahbatu_jalan.json` (geometri
 © kontributor OpenStreetMap, ODbL). Warna tiap arah memakai ramalan di titik kamera untuk seluruh
-ruas.
+ruas. Rentang warnanya (kend/jam) bisa diatur di panel.
 
 ### Mutu video dan galat ramalan
 
@@ -255,8 +259,8 @@ rekaman jam overlay 10.26-10.28). Deteksinya lewat jam overlay, jalankan sebelum
 .venv\Scripts\python.exe eda\pindai_ulang.py
 ```
 
-`forecast.siapkan_data` membuang menit yang ditandai (`eda/data/ulang_per_menit.csv`). Laporan EDA
-dan hasil di `forecast/hasil/` baru memuat perubahan ini setelah pipeline dijalankan ulang.
+`eda/analisis.py` dan `forecast.siapkan_data` membuang menit yang ditandai
+(`eda/data/ulang_per_menit.csv`).
 Gambar rusak (galat dekode H.264) belum difilter: video dengan galat dekode lebih banyak cenderung
 menghasilkan arus lebih rendah (Spearman -0,43 pada 79 video siang), terutama sejak 20 Nov, sehingga
 ramalan terlihat jauh di atas aktual pada periode itu.

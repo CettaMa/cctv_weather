@@ -54,10 +54,10 @@ A seamless, real-time spatial intelligence interface that integrates Bandung mun
 
 ## Evidence on Hand
 
-- [`csv/cctv_bandung_data_validated.csv`](file:///C:/Users/Ichi/Documents/pelindung/csv/cctv_bandung_data_validated.csv): Master dataset containing ~375 camera records with GPS coordinates, providers, stream URLs, and verification history.
-- [`csv/cctv_perempatan_clusters.csv`](file:///C:/Users/Ichi/Documents/pelindung/csv/cctv_perempatan_clusters.csv) & [`csv/cctv_di_sekitar_perempatan_100m.csv`](file:///C:/Users/Ichi/Documents/pelindung/csv/cctv_di_sekitar_perempatan_100m.csv): Intersection clustering datasets mapped from OpenStreetMap.
-- [`cctv_video_samples/`](file:///C:/Users/Ichi/Documents/pelindung/cctv_video_samples): Sample video captures (.mp4) verifying stream functionality.
-- Scraping, clustering, and benchmarking scripts in [`script_tools/`](file:///C:/Users/Ichi/Documents/pelindung/script_tools).
+- [`csv/cctv_bandung_data_validated.csv`](csv/cctv_bandung_data_validated.csv): Master dataset containing ~375 camera records with GPS coordinates, providers, stream URLs, and verification history.
+- [`csv/cctv_perempatan_clusters.csv`](csv/cctv_perempatan_clusters.csv) & [`csv/cctv_di_sekitar_perempatan_100m.csv`](csv/cctv_di_sekitar_perempatan_100m.csv): Intersection clustering datasets mapped from OpenStreetMap.
+- [`cctv_video_samples/`](cctv_video_samples): Sample video captures (.mp4) verifying stream functionality.
+- Scraping, clustering, and benchmarking scripts in [`script_tools/`](script_tools).
 
 ## Product Principles
 
