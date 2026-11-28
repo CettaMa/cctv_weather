@@ -1,5 +1,9 @@
-# Image Python slim agar ringan
-FROM python:3.11-slim
+# Tahap ini hanya sumber pustaka sistem: image penuh sudah memuat libgomp, sehingga build tidak perlu
+# apt-get (server di jaringan yang tidak bisa menjangkau deb.debian.org tetap bisa membangun image)
+FROM python:3.11-trixie AS libs
+
+# Image Python slim agar ringan; rilis Debian-nya harus sama dengan tahap libs
+FROM python:3.11-slim-trixie
 
 # TZ: jam "WIB" yang ditampilkan aplikasi berasal dari datetime.now()
 ENV PYTHONUNBUFFERED=1 \
@@ -11,9 +15,7 @@ ENV PYTHONUNBUFFERED=1 \
 WORKDIR /app
 
 # libgomp1 dibutuhkan LightGBM
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends libgomp1 \
-    && rm -rf /var/lib/apt/lists/*
+COPY --from=libs /usr/lib/x86_64-linux-gnu/libgomp.so.1* /usr/lib/x86_64-linux-gnu/
 
 # Aplikasi berjalan sebagai user biasa, bukan root
 RUN useradd --system --uid 10001 --no-create-home app
