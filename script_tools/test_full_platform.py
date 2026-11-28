@@ -101,6 +101,16 @@ class TestFlaskPlatformAPI(unittest.TestCase):
         self.assertIn(b"CCTV Wall Multi-Grid", res.data)
         self.assertIn(b"Pemantauan Titik Rawan Banjir", res.data)
 
+    def test_buahbatu_forecast_page(self):
+        res = self.client.get("/ramalan/buahbatu")
+        self.assertEqual(res.status_code, 200)
+        for element in (b"bbfRoadMap", b"bbfRainMap", b"bbfTraffic", b"bbfHeatAuto"):
+            self.assertIn(element, res.data)
+        self.assertIn(b'data-stream="/api/stream/HIKSVISION/Terbuahbatu.m3u8"', res.data)
+        old = self.client.get("/?ramalan=buahbatu")
+        self.assertEqual(old.status_code, 302)
+        self.assertTrue(old.headers["Location"].endswith("/ramalan/buahbatu"))
+
     def test_api_intersections(self):
         res = self.client.get("/api/intersections")
         self.assertEqual(res.status_code, 200)

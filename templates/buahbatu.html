@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="id" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ramalan Buah Batu · TENKOU-TK</title>
+  <script>
+    // tema yang sama dengan peta utama, dipasang sebelum halaman digambar
+    try { document.documentElement.setAttribute("data-theme", localStorage.getItem("cctv-theme") || "dark"); } catch (e) {}
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@4/dist/maplibre-gl.css">
+  <link rel="stylesheet" href="{{ url_for('static', filename='buahbatu_forecast.css', v='6') }}">
+</head>
+<body>
+  <header class="bbf-topbar">
+    <a class="bbf-btn bbf-back" href="{{ url_for('index') }}">‹ Peta utama</a>
+    <div class="bbf-titles">
+      <h1>Ramalan traffic &amp; cuaca</h1>
+      <p>CCTV Terusan Buah Batu – Jembatan Tol 02 · mode replay</p>
+    </div>
+    <button type="button" class="bbf-btn" id="bbfTheme">Ganti tema</button>
+  </header>
+
+  <main class="bbf-main">
+    <p class="bbf-fail" id="bbfFail" role="alert" hidden></p>
+
+    <div class="bbf-top">
+    <section class="bbf-card-box bbf-live" aria-labelledby="bbfLiveHead">
+      <div class="bbf-box-head">
+        <h2 id="bbfLiveHead">Siaran langsung</h2>
+        <span class="bbf-hint">Waktu sekarang, bukan waktu replay</span>
+      </div>
+      <div class="bbf-video">
+        <video id="bbfVideo" data-stream="{{ live_url }}" muted autoplay playsinline controls aria-label="Video langsung CCTV Terusan Buah Batu Jembatan Tol 02"></video>
+        <div class="bbf-video-status" id="bbfVideoStatus" role="status">
+          <span id="bbfVideoMessage">Menghubungkan ke kamera…</span>
+          <button type="button" class="bbf-btn" id="bbfVideoRetry" hidden>Coba lagi</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="bbf-card-box bbf-controls" aria-label="Pengaturan ramalan">
+      <div>
+        <div class="bbf-label"><label for="bbfOrigin">Waktu acuan (0 menit)</label></div>
+        <div class="bbf-row">
+          <button type="button" class="bbf-btn" data-step="-1" aria-label="Waktu acuan sebelumnya">‹</button>
+          <select id="bbfOrigin"></select>
+          <button type="button" class="bbf-btn" data-step="1" aria-label="Waktu acuan berikutnya">›</button>
+        </div>
+      </div>
+      <div>
+        <div class="bbf-label">Mode slider</div>
+        <div class="bbf-seg" role="group" aria-label="Mode slider">
+          <button type="button" data-mode="terkunci" aria-pressed="true">Terkunci</button>
+          <button type="button" data-mode="bebas" aria-pressed="false">Bebas</button>
+        </div>
+        <div class="bbf-hint" id="bbfModeHint">Traffic dan cuaca selalu di horizon yang sama.</div>
+      </div>
+      <div class="bbf-slider">
+        <div class="bbf-slider-top"><label class="bbf-slider-name" for="bbfTraffic">Traffic</label><span class="bbf-slider-val" id="bbfTrafficVal"></span></div>
+        <input id="bbfTraffic" type="range" min="0" max="72" step="1" value="0">
+      </div>
+      <div class="bbf-slider">
+        <div class="bbf-slider-top"><label class="bbf-slider-name" for="bbfWeather">Cuaca</label><span class="bbf-slider-val" id="bbfWeatherVal"></span></div>
+        <input id="bbfWeather" type="range" min="0" max="72" step="1" value="0">
+      </div>
+    </section>
+    </div>
+
+    <div class="bbf-columns">
+      <section class="bbf-card-box" aria-labelledby="bbfTrafficHead">
+        <div class="bbf-box-head">
+          <h2 id="bbfTrafficHead">Traffic</h2>
+          <button type="button" class="bbf-btn bbf-toggle" data-focus="road">Pusatkan peta</button>
+        </div>
+        <div class="bbf-map" id="bbfRoadMap" role="img" aria-label="Minimap kepadatan Jalan Buah Batu"></div>
+        <div class="bbf-heat">
+          <div class="bbf-box-head">
+            <span class="bbf-strong">Rentang warna jalan (kend/jam)</span>
+            <button type="button" class="bbf-btn bbf-toggle" id="bbfHeatAuto" aria-pressed="true" title="Ikuti nilai terkecil dan terbesar ramalan dari waktu acuan">Otomatis</button>
+          </div>
+          <div class="bbf-row">
+            <label class="bbf-num">Bawah <input type="number" id="bbfHeat_min" min="0" step="100" inputmode="numeric"></label>
+            <label class="bbf-num">Atas <input type="number" id="bbfHeat_max" min="0" step="100" inputmode="numeric"></label>
+          </div>
+          <div class="bbf-error" id="bbfHeatError" role="alert"></div>
+          <div class="bbf-legend">
+            <div class="bbf-legend-marks" id="bbfLegendMarks"></div>
+            <div class="bbf-legend-bar" id="bbfLegendBar"></div>
+            <div class="bbf-legend-ticks" id="bbfLegendTicks"></div>
+          </div>
+          <div class="bbf-hint">▼ menjauhi · ▽ mendekati. Seluruh ruas memakai ramalan di titik kamera.</div>
+        </div>
+        <div class="bbf-grid" id="bbfTrafficCards"></div>
+        <div class="bbf-chart"><canvas id="bbfTrafficChart" aria-label="Grafik ramalan arus per arah"></canvas></div>
+      </section>
+
+      <section class="bbf-card-box" aria-labelledby="bbfWeatherHead">
+        <div class="bbf-box-head">
+          <h2 id="bbfWeatherHead">Cuaca</h2>
+          <button type="button" class="bbf-btn bbf-toggle" data-focus="rain">Pusatkan peta</button>
+        </div>
+        <div class="bbf-map" id="bbfRainMap" role="img" aria-label="Minimap hujan di sekitar kamera"></div>
+        <div class="bbf-heat">
+          <div class="bbf-strong">Hujan (radius 1 km)</div>
+          <div class="bbf-rain-scale"></div>
+          <div class="bbf-legend-ticks"><span>0,1</span><span>2,5</span><span>≥ 5 mm/jam</span></div>
+          <div class="bbf-hint">Garis putus-putus berarti tidak hujan. Nilainya satu titik, bukan peta sebaran.</div>
+        </div>
+        <div class="bbf-grid" id="bbfWeatherCards"></div>
+        <div class="bbf-chart"><canvas id="bbfRainChart" aria-label="Grafik hujan per 5 menit"></canvas></div>
+      </section>
+    </div>
+
+    <p class="bbf-note" id="bbfNote"></p>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@4/dist/maplibre-gl.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@maplibre/maplibre-gl-leaflet@0.1.4/leaflet-maplibre-gl.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.15/dist/hls.min.js"></script>
+  <script src="{{ url_for('static', filename='buahbatu_live.js', v='1') }}"></script>
+  <script src="{{ url_for('static', filename='buahbatu_forecast.js', v='5') }}"></script>
+</body>
+</html>
