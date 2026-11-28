@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>About · TENKOU-TK</title>
+  <script>
+    // same theme as the main map, applied before the page is drawn
+    try { document.documentElement.setAttribute("data-theme", localStorage.getItem("cctv-theme") || "dark"); } catch (e) {}
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+JP:wght@400;500;700&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='buahbatu_forecast.css', v='7') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='about.css', v='3') }}">
+</head>
+<body>
+  <header class="bbf-topbar">
+    <a class="bbf-btn bbf-back" href="{{ url_for('index') }}" data-i18n="back">‹ Main map</a>
+    <div class="bbf-titles">
+      <h1 data-i18n="heading">About TENKOU-TK</h1>
+      <p>Telkom University–Kyoto University Environmental &amp; Kinetic Observation Unit</p>
+    </div>
+    <div class="bbf-lang" role="group" aria-label="Language / Bahasa / 言語">
+      <button type="button" data-lang="id" lang="id" aria-pressed="false">Indonesia</button>
+      <button type="button" data-lang="ja" lang="ja" aria-pressed="false">日本語</button>
+      <button type="button" data-lang="en" lang="en" aria-pressed="true">English</button>
+    </div>
+    <button type="button" class="bbf-btn" id="aboutTheme" data-i18n="theme">Switch theme</button>
+  </header>
+
+  <main class="about-main">
+    <section aria-labelledby="aboutProject">
+      <h2 id="aboutProject" data-i18n="projectHead">The project</h2>
+      <p class="about-lead" data-i18n="lead">TENKOU-TK is a web map that brings together public CCTV streams, weather information and road intersection data to observe traffic and environmental conditions in Bandung, Indonesia.</p>
+      <dl class="about-features">
+        <div>
+          <dt data-i18n="mapTitle">Live camera map</dt>
+          <dd data-i18n="mapText">Public CCTV streams across the city, with their online status and a multi-camera wall per road corridor.</dd>
+        </div>
+        <div>
+          <dt data-i18n="weatherTitle">Weather and flood watch</dt>
+          <dd data-i18n="weatherText">Rainfall, wind and river discharge layers, together with monitoring of flood-prone locations.</dd>
+        </div>
+        <div>
+          <dt data-i18n="spatialTitle">Spatial analysis</dt>
+          <dd data-i18n="spatialText">Road intersections, camera clusters, density heatmaps and terrain elevation.</dd>
+        </div>
+        <div>
+          <dt><a href="{{ url_for('buahbatu_page') }}" data-i18n="forecastTitle">Traffic and weather forecast</a></dt>
+          <dd data-i18n="forecastText">An experimental page for Terusan Buah Batu with live video. It replays recorded data from 20–26 November 2026 with forecasts up to six hours ahead.</dd>
+        </div>
+      </dl>
+    </section>
+
+    <section aria-labelledby="aboutPartners">
+      <h2 id="aboutPartners" data-i18n="partnersHead">Participating institutions</h2>
+      <ul class="about-logos">
+        <li>
+          <div class="about-logo about-logo-tk"><img src="{{ url_for('static', filename='logos/teknik-komputer.png') }}" alt="Teknik Komputer" width="447" height="447"></div>
+          <strong>Teknik Komputer</strong>
+          <span data-i18n="tk">Computer Engineering</span>
+        </li>
+        <li>
+          <div class="about-logo"><img src="{{ url_for('static', filename='logos/dpri-ku.png') }}" alt="DPRI-KU" width="407" height="491"></div>
+          <strong>DPRI-KU</strong>
+          <span data-i18n="dpri">Disaster Prevention Research Institute, Kyoto University</span>
+        </li>
+        <li>
+          <div class="about-logo"><img src="{{ url_for('static', filename='logos/brin.png') }}" alt="BRIN" width="386" height="518"></div>
+          <strong>BRIN</strong>
+          <span data-i18n="brin">National Research and Innovation Agency of Indonesia</span>
+        </li>
+        <li>
+          <div class="about-logo about-logo-atcs"><img src="{{ url_for('static', filename='logos/atcs.png') }}" alt="ATCS" width="499" height="400"></div>
+          <strong>ATCS</strong>
+          <span data-i18n="atcs">Area Traffic Control System</span>
+        </li>
+      </ul>
+    </section>
+
+    <section aria-labelledby="aboutData">
+      <h2 id="aboutData" data-i18n="dataHead">Data sources</h2>
+      <ul class="about-sources">
+        <li><span data-i18n="cctvLabel">CCTV streams: </span><a href="https://pelindung.bandung.go.id" target="_blank" rel="noopener">Pelindung Bandung</a><span data-i18n="cctvAnd"> and ATCS cameras</span></li>
+        <li><span data-i18n="weatherLabel">Weather: </span><a href="https://open-meteo.com" target="_blank" rel="noopener">Open-Meteo</a><span data-i18n="and"> and </span><a href="https://openweathermap.org" target="_blank" rel="noopener">OpenWeatherMap</a></li>
+        <li><span data-i18n="mapsLabel">Maps: </span><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap contributors</a><span data-i18n="and"> and </span><a href="https://carto.com/attributions" target="_blank" rel="noopener">© CARTO</a></li>
+      </ul>
+    </section>
+  </main>
+
+  <script src="{{ url_for('static', filename='about.js', v='1') }}"></script>
+</body>
+</html>

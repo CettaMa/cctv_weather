@@ -722,6 +722,12 @@ t.start()
 # ==========================================
 # Web Routes
 # ==========================================
+@app.route("/about")
+def about_page():
+    """Project description, participating institutions, and data sources."""
+    return render_template("about.html")
+
+
 @app.route("/ramalan/buahbatu")
 def buahbatu_page():
     """Replay forecast page (traffic + weather, two minimaps, live video) for CCTV Terusan Buah Batu - Jembatan Tol 02."""

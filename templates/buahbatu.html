@@ -3,26 +3,32 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Ramalan Buah Batu · TENKOU-TK</title>
+  <title data-i18n="pageTitle">Ramalan Buah Batu · TENKOU-TK</title>
   <script>
     // tema yang sama dengan peta utama, dipasang sebelum halaman digambar
     try { document.documentElement.setAttribute("data-theme", localStorage.getItem("cctv-theme") || "dark"); } catch (e) {}
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+JP:wght@400;500;700&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/maplibre-gl@4/dist/maplibre-gl.css">
-  <link rel="stylesheet" href="{{ url_for('static', filename='buahbatu_forecast.css', v='6') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='buahbatu_forecast.css', v='7') }}">
 </head>
 <body>
   <header class="bbf-topbar">
-    <a class="bbf-btn bbf-back" href="{{ url_for('index') }}">‹ Peta utama</a>
+    <a class="bbf-btn bbf-back" href="{{ url_for('index') }}" data-i18n="back">‹ Peta utama</a>
     <div class="bbf-titles">
-      <h1>Ramalan traffic &amp; cuaca</h1>
-      <p>CCTV Terusan Buah Batu – Jembatan Tol 02 · mode replay</p>
+      <h1 data-i18n="heading">Ramalan traffic &amp; cuaca</h1>
+      <p data-i18n="subtitle">CCTV Terusan Buah Batu – Jembatan Tol 02 · mode replay</p>
     </div>
-    <button type="button" class="bbf-btn" id="bbfTheme">Ganti tema</button>
+    <div class="bbf-lang" role="group" aria-label="Language / Bahasa / 言語">
+      <button type="button" data-lang="id" lang="id" aria-pressed="true">Indonesia</button>
+      <button type="button" data-lang="ja" lang="ja" aria-pressed="false">日本語</button>
+      <button type="button" data-lang="en" lang="en" aria-pressed="false">English</button>
+    </div>
+    <a class="bbf-btn bbf-back" href="{{ url_for('about_page') }}" data-i18n="about">Tentang</a>
+    <button type="button" class="bbf-btn" id="bbfTheme" data-i18n="theme">Ganti tema</button>
   </header>
 
   <main class="bbf-main">
@@ -31,41 +37,41 @@
     <div class="bbf-top">
     <section class="bbf-card-box bbf-live" aria-labelledby="bbfLiveHead">
       <div class="bbf-box-head">
-        <h2 id="bbfLiveHead">Siaran langsung</h2>
-        <span class="bbf-hint">Waktu sekarang, bukan waktu replay</span>
+        <h2 id="bbfLiveHead" data-i18n="liveHead">Siaran langsung</h2>
+        <span class="bbf-hint" data-i18n="liveHint">Waktu sekarang, bukan waktu replay</span>
       </div>
       <div class="bbf-video">
-        <video id="bbfVideo" data-stream="{{ live_url }}" muted autoplay playsinline controls aria-label="Video langsung CCTV Terusan Buah Batu Jembatan Tol 02"></video>
+        <video id="bbfVideo" data-stream="{{ live_url }}" muted autoplay playsinline controls aria-label="Video langsung CCTV Terusan Buah Batu Jembatan Tol 02" data-i18n-aria="videoAria"></video>
         <div class="bbf-video-status" id="bbfVideoStatus" role="status">
           <span id="bbfVideoMessage">Menghubungkan ke kamera…</span>
-          <button type="button" class="bbf-btn" id="bbfVideoRetry" hidden>Coba lagi</button>
+          <button type="button" class="bbf-btn" id="bbfVideoRetry" hidden data-i18n="videoRetry">Coba lagi</button>
         </div>
       </div>
     </section>
 
-    <section class="bbf-card-box bbf-controls" aria-label="Pengaturan ramalan">
+    <section class="bbf-card-box bbf-controls" aria-label="Pengaturan ramalan" data-i18n-aria="controlsAria">
       <div>
-        <div class="bbf-label"><label for="bbfOrigin">Waktu acuan (0 menit)</label></div>
+        <div class="bbf-label"><label for="bbfOrigin" data-i18n="originLabel">Waktu acuan (0 menit)</label></div>
         <div class="bbf-row">
-          <button type="button" class="bbf-btn" data-step="-1" aria-label="Waktu acuan sebelumnya">‹</button>
+          <button type="button" class="bbf-btn" data-step="-1" aria-label="Waktu acuan sebelumnya" data-i18n-aria="originPrev">‹</button>
           <select id="bbfOrigin"></select>
-          <button type="button" class="bbf-btn" data-step="1" aria-label="Waktu acuan berikutnya">›</button>
+          <button type="button" class="bbf-btn" data-step="1" aria-label="Waktu acuan berikutnya" data-i18n-aria="originNext">›</button>
         </div>
       </div>
       <div>
-        <div class="bbf-label">Mode slider</div>
-        <div class="bbf-seg" role="group" aria-label="Mode slider">
-          <button type="button" data-mode="terkunci" aria-pressed="true">Terkunci</button>
-          <button type="button" data-mode="bebas" aria-pressed="false">Bebas</button>
+        <div class="bbf-label" data-i18n="sliderMode">Mode slider</div>
+        <div class="bbf-seg" role="group" aria-label="Mode slider" data-i18n-aria="sliderMode">
+          <button type="button" data-mode="terkunci" aria-pressed="true" data-i18n="modeLocked">Terkunci</button>
+          <button type="button" data-mode="bebas" aria-pressed="false" data-i18n="modeFree">Bebas</button>
         </div>
-        <div class="bbf-hint" id="bbfModeHint">Traffic dan cuaca selalu di horizon yang sama.</div>
+        <div class="bbf-hint" id="bbfModeHint" data-i18n="hintLocked">Traffic dan cuaca selalu di horizon yang sama.</div>
       </div>
       <div class="bbf-slider">
-        <div class="bbf-slider-top"><label class="bbf-slider-name" for="bbfTraffic">Traffic</label><span class="bbf-slider-val" id="bbfTrafficVal"></span></div>
+        <div class="bbf-slider-top"><label class="bbf-slider-name" for="bbfTraffic" data-i18n="traffic">Traffic</label><span class="bbf-slider-val" id="bbfTrafficVal"></span></div>
         <input id="bbfTraffic" type="range" min="0" max="72" step="1" value="0">
       </div>
       <div class="bbf-slider">
-        <div class="bbf-slider-top"><label class="bbf-slider-name" for="bbfWeather">Cuaca</label><span class="bbf-slider-val" id="bbfWeatherVal"></span></div>
+        <div class="bbf-slider-top"><label class="bbf-slider-name" for="bbfWeather" data-i18n="weather">Cuaca</label><span class="bbf-slider-val" id="bbfWeatherVal"></span></div>
         <input id="bbfWeather" type="range" min="0" max="72" step="1" value="0">
       </div>
     </section>
@@ -74,18 +80,18 @@
     <div class="bbf-columns">
       <section class="bbf-card-box" aria-labelledby="bbfTrafficHead">
         <div class="bbf-box-head">
-          <h2 id="bbfTrafficHead">Traffic</h2>
-          <button type="button" class="bbf-btn bbf-toggle" data-focus="road">Pusatkan peta</button>
+          <h2 id="bbfTrafficHead" data-i18n="traffic">Traffic</h2>
+          <button type="button" class="bbf-btn bbf-toggle" data-focus="road" data-i18n="focusMap">Pusatkan peta</button>
         </div>
-        <div class="bbf-map" id="bbfRoadMap" role="img" aria-label="Minimap kepadatan Jalan Buah Batu"></div>
+        <div class="bbf-map" id="bbfRoadMap" role="img" aria-label="Minimap kepadatan Jalan Buah Batu" data-i18n-aria="roadMapAria"></div>
         <div class="bbf-heat">
           <div class="bbf-box-head">
-            <span class="bbf-strong">Rentang warna jalan (kend/jam)</span>
-            <button type="button" class="bbf-btn bbf-toggle" id="bbfHeatAuto" aria-pressed="true" title="Ikuti nilai terkecil dan terbesar ramalan dari waktu acuan">Otomatis</button>
+            <span class="bbf-strong" data-i18n="heatRange">Rentang warna jalan (kend/jam)</span>
+            <button type="button" class="bbf-btn bbf-toggle" id="bbfHeatAuto" aria-pressed="true" title="Ikuti nilai terkecil dan terbesar ramalan dari waktu acuan" data-i18n-title="heatAutoTitle" data-i18n="heatAuto">Otomatis</button>
           </div>
           <div class="bbf-row">
-            <label class="bbf-num">Bawah <input type="number" id="bbfHeat_min" min="0" step="100" inputmode="numeric"></label>
-            <label class="bbf-num">Atas <input type="number" id="bbfHeat_max" min="0" step="100" inputmode="numeric"></label>
+            <label class="bbf-num"><span data-i18n="heatMin">Bawah</span> <input type="number" id="bbfHeat_min" min="0" step="100" inputmode="numeric"></label>
+            <label class="bbf-num"><span data-i18n="heatMax">Atas</span> <input type="number" id="bbfHeat_max" min="0" step="100" inputmode="numeric"></label>
           </div>
           <div class="bbf-error" id="bbfHeatError" role="alert"></div>
           <div class="bbf-legend">
@@ -93,26 +99,26 @@
             <div class="bbf-legend-bar" id="bbfLegendBar"></div>
             <div class="bbf-legend-ticks" id="bbfLegendTicks"></div>
           </div>
-          <div class="bbf-hint">▼ menjauhi · ▽ mendekati. Seluruh ruas memakai ramalan di titik kamera.</div>
+          <div class="bbf-hint" data-i18n="roadHint">▼ menjauhi · ▽ mendekati. Seluruh ruas memakai ramalan di titik kamera.</div>
         </div>
         <div class="bbf-grid" id="bbfTrafficCards"></div>
-        <div class="bbf-chart"><canvas id="bbfTrafficChart" aria-label="Grafik ramalan arus per arah"></canvas></div>
+        <div class="bbf-chart"><canvas id="bbfTrafficChart" aria-label="Grafik ramalan arus per arah" data-i18n-aria="trafficChartAria"></canvas></div>
       </section>
 
       <section class="bbf-card-box" aria-labelledby="bbfWeatherHead">
         <div class="bbf-box-head">
-          <h2 id="bbfWeatherHead">Cuaca</h2>
-          <button type="button" class="bbf-btn bbf-toggle" data-focus="rain">Pusatkan peta</button>
+          <h2 id="bbfWeatherHead" data-i18n="weather">Cuaca</h2>
+          <button type="button" class="bbf-btn bbf-toggle" data-focus="rain" data-i18n="focusMap">Pusatkan peta</button>
         </div>
-        <div class="bbf-map" id="bbfRainMap" role="img" aria-label="Minimap hujan di sekitar kamera"></div>
+        <div class="bbf-map" id="bbfRainMap" role="img" aria-label="Minimap hujan di sekitar kamera" data-i18n-aria="rainMapAria"></div>
         <div class="bbf-heat">
-          <div class="bbf-strong">Hujan (radius 1 km)</div>
+          <div class="bbf-strong" data-i18n="rainRadius">Hujan (radius 1 km)</div>
           <div class="bbf-rain-scale"></div>
-          <div class="bbf-legend-ticks"><span>0,1</span><span>2,5</span><span>≥ 5 mm/jam</span></div>
-          <div class="bbf-hint">Garis putus-putus berarti tidak hujan. Nilainya satu titik, bukan peta sebaran.</div>
+          <div class="bbf-legend-ticks" id="bbfRainTicks"></div>
+          <div class="bbf-hint" data-i18n="rainHint">Garis putus-putus berarti tidak hujan. Nilainya satu titik, bukan peta sebaran.</div>
         </div>
         <div class="bbf-grid" id="bbfWeatherCards"></div>
-        <div class="bbf-chart"><canvas id="bbfRainChart" aria-label="Grafik hujan per 5 menit"></canvas></div>
+        <div class="bbf-chart"><canvas id="bbfRainChart" aria-label="Grafik hujan per 5 menit" data-i18n-aria="rainChartAria"></canvas></div>
       </section>
     </div>
 
@@ -124,7 +130,10 @@
   <script src="https://cdn.jsdelivr.net/npm/@maplibre/maplibre-gl-leaflet@0.1.4/leaflet-maplibre-gl.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.15/dist/hls.min.js"></script>
-  <script src="{{ url_for('static', filename='buahbatu_live.js', v='1') }}"></script>
-  <script src="{{ url_for('static', filename='buahbatu_forecast.js', v='5') }}"></script>
+  <script src="{{ url_for('static', filename='i18n.js', v='1') }}"></script>
+  <script src="{{ url_for('static', filename='i18n_ramalan.js', v='1') }}"></script>
+  <script>I18n.init();</script>
+  <script src="{{ url_for('static', filename='buahbatu_live.js', v='2') }}"></script>
+  <script src="{{ url_for('static', filename='buahbatu_forecast.js', v='6') }}"></script>
 </body>
 </html>

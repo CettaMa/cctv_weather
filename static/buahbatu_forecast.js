@@ -16,7 +16,9 @@
   const ROAD_URL = "/static/buahbatu_jalan.json";
   const RAIN_MAX = 5;            // mm/jam untuk cincin paling pekat
   const DIRS = ["menjauhi", "mendekati"];
-  const DIR_LABEL = { menjauhi: "Menjauhi", mendekati: "Mendekati" };
+  const DIR_KEY = { menjauhi: "away", mendekati: "towards" };
+  const t = I18n.t;
+  const dirLabel = (d) => t(DIR_KEY[d]);
   const DIR_COLOR = { menjauhi: "#2a78d6", mendekati: "#eb6834" };
   // warna heatmap dari batas bawah ke batas atas rentang: hijau, kuning, jingga, merah, merah tua
   const HEAT_COLORS = [[16, 185, 129], [250, 204, 21], [249, 115, 22], [220, 38, 38], [112, 16, 48]];
@@ -44,8 +46,8 @@
 
   // ---------------------------------------------------------------- util
   const $ = (sel) => document.querySelector(sel);
-  const fmtInt = (v) => (v === null || v === undefined || Number.isNaN(v) ? "-" : Math.round(v).toLocaleString("id-ID"));
-  const fmt1 = (v) => (v === null || v === undefined || Number.isNaN(v) ? "-" : v.toLocaleString("id-ID", { maximumFractionDigits: 1, minimumFractionDigits: 1 }));
+  const fmtInt = (v) => (v === null || v === undefined || Number.isNaN(v) ? "-" : Math.round(v).toLocaleString(I18n.locale));
+  const fmt1 = (v) => (v === null || v === undefined || Number.isNaN(v) ? "-" : v.toLocaleString(I18n.locale, { maximumFractionDigits: 1, minimumFractionDigits: 1 }));
   const cssVar = (name, fallback) => (getComputedStyle(document.documentElement).getPropertyValue(name) || "").trim() || fallback;
 
   function timeAt(h) {
@@ -56,13 +58,12 @@
   function hhmm(d) {
     // waktu WIB (UTC+7) tanpa bergantung pada zona waktu browser
     const w = new Date(d.getTime() + 7 * 3600000);
-    return `${String(w.getUTCHours()).padStart(2, "0")}.${String(w.getUTCMinutes()).padStart(2, "0")}`;
+    const sep = I18n.lang === "id" ? "." : ":";
+    return `${String(w.getUTCHours()).padStart(2, "0")}${sep}${String(w.getUTCMinutes()).padStart(2, "0")}`;
   }
 
   function dayLabel(iso) {
-    const w = new Date(new Date(iso).getTime() + 7 * 3600000);
-    const hari = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"][w.getUTCDay()];
-    return `${hari} ${w.getUTCDate()} Nov`;
+    return new Date(iso).toLocaleDateString(I18n.locale, { weekday: "short", day: "numeric", month: "short", timeZone: "Asia/Jakarta" });
   }
 
   function seriAt(key, h) {
@@ -79,9 +80,9 @@
 
   function condition(dj) {
     if (dj === null || Number.isNaN(dj)) return { cls: "", text: "-" };
-    if (dj >= state.meta.dj_macet) return { cls: "macet", text: "Macet" };
-    if (dj >= state.meta.dj_padat) return { cls: "padat", text: "Padat" };
-    return { cls: "lancar", text: "Lancar" };
+    if (dj >= state.meta.dj_macet) return { cls: "macet", text: t("jammed") };
+    if (dj >= state.meta.dj_padat) return { cls: "padat", text: t("dense") };
+    return { cls: "lancar", text: t("smooth") };
   }
 
   function djAt(dir, h) {
@@ -91,10 +92,10 @@
 
   function rainClass(mm) {
     if (mm === null) return "-";
-    if (mm < 0.1) return "Tidak hujan";
-    if (mm < 2.5) return "Hujan ringan";
-    if (mm < 7.6) return "Hujan sedang";
-    return "Hujan lebat";
+    if (mm < 0.1) return t("noRain");
+    if (mm < 2.5) return t("lightRain");
+    if (mm < 7.6) return t("moderateRain");
+    return t("heavyRain");
   }
 
   // posisi arus di dalam rentang heatmap, 0..1 (di luar rentang dijepit ke ujungnya)
@@ -133,9 +134,9 @@
     $("#bbfLegendMarks").innerHTML = DIRS.map((d) => {
       const flow = trafficAt(d, "flow", state.hTraffic);
       if (flow === null) return "";
-      const out = flow < min ? " (di bawah rentang)" : flow > max ? " (di atas rentang)" : "";
+      const out = flow < min ? t("belowRange") : flow > max ? t("aboveRange") : "";
       return `<span class="bbf-mark" style="left:${(heatPos(flow) * 100).toFixed(1)}%" ` +
-        `title="${DIR_LABEL[d]}: ${fmtInt(flow)} kend/jam${out}">${d === "menjauhi" ? "▼" : "▽"}</span>`;
+        `title="${dirLabel(d)}: ${fmtInt(flow)} ${t("vehUnit")}${out}">${d === "menjauhi" ? "▼" : "▽"}</span>`;
     }).join("");
   }
 
@@ -143,7 +144,7 @@
     const min = parseFloat($("#bbfHeat_min").value);
     const max = parseFloat($("#bbfHeat_max").value);
     const valid = Number.isFinite(min) && Number.isFinite(max) && min >= 0 && max - min >= HEAT_MIN_SPAN;
-    $("#bbfHeatError").textContent = valid ? "" : `Batas atas harus minimal ${HEAT_MIN_SPAN} di atas batas bawah.`;
+    $("#bbfHeatError").textContent = valid ? "" : t("heatError", { n: HEAT_MIN_SPAN });
     if (!valid) return;
     state.heat = { auto: false, min, max };
     renderHeatControls();
@@ -206,7 +207,7 @@
     L.circleMarker(cameraPoint(), {
       radius: 5, color: cssVar("--text-strong", "#fff"), weight: 1.5, fillOpacity: 1,
       fillColor: cssVar("--accent", "#38bdf8"),
-    }).bindTooltip("Kamera TOL 02").addTo(target.layer);
+    }).bindTooltip(t("camera")).addTo(target.layer);
   }
 
   function renderRain() {
@@ -236,16 +237,16 @@
       // ruas dua arah di simpang memakai arah yang lebih padat
       const flows = r.arah.map((d) => trafficAt(d, "flow", state.hTraffic)).filter((v) => v !== null);
       if (!flows.length) return;
-      const t = heatPos(Math.max(...flows));
-      const color = `rgb(${heatColor(t).join(",")})`;
-      const heat = 0.75 + 0.25 * t;
-      const rows = r.arah.map((d) => `${DIR_LABEL[d]}: ${fmtInt(trafficAt(d, "flow", state.hTraffic))} kend/jam · ${condition(djAt(d, state.hTraffic)).text}`);
+      const pos = heatPos(Math.max(...flows));
+      const color = `rgb(${heatColor(pos).join(",")})`;
+      const heat = 0.75 + 0.25 * pos;
+      const rows = r.arah.map((d) => `${dirLabel(d)}: ${fmtInt(trafficAt(d, "flow", state.hTraffic))} ${t("vehUnit")} · ${condition(djAt(d, state.hTraffic)).text}`);
       // tiga pita bertumpuk: tepi tipis, tengah pekat
       [[1, 0.45], [0.68, 0.4], [0.34, 0.5]].forEach(([part, alpha], i) => {
         const poly = L.polygon(roadPolygon(r.koordinat, r.lebar_m * part), {
           stroke: false, fillColor: color, fillOpacity: alpha * heat, interactive: i === 0,
         }).addTo(target.layer);
-        if (i === 0) poly.bindTooltip(`+${state.hTraffic * state.meta.langkah_menit} mnt<br>${rows.join("<br>")}`, { sticky: true });
+        if (i === 0) poly.bindTooltip(`+${state.hTraffic * state.meta.langkah_menit} ${t("minutes")}<br>${rows.join("<br>")}`, { sticky: true });
       });
     });
     addCamera(target);
@@ -290,11 +291,11 @@
     const datasets = [];
     DIRS.forEach((d) => {
       datasets.push({
-        label: `Ramalan ${DIR_LABEL[d]}`, data: Array.from({ length: H + 1 }, (_, h) => trafficAt(d, "flow", h)),
+        label: t("seriesForecast", { dir: dirLabel(d) }), data: Array.from({ length: H + 1 }, (_, h) => trafficAt(d, "flow", h)),
         borderColor: DIR_COLOR[d], backgroundColor: DIR_COLOR[d], borderWidth: 2, pointRadius: 0, tension: 0.25, spanGaps: true,
       });
       datasets.push({
-        label: `Aktual ${DIR_LABEL[d]}`, data: Array.from({ length: H + 1 }, (_, h) => seriAt(`flow_${d}`, h)),
+        label: t("seriesActual", { dir: dirLabel(d) }), data: Array.from({ length: H + 1 }, (_, h) => seriAt(`flow_${d}`, h)),
         borderColor: DIR_COLOR[d], backgroundColor: DIR_COLOR[d], showLine: false, pointRadius: 1.8, pointStyle: "circle",
       });
     });
@@ -303,8 +304,8 @@
       options: {
         ...common,
         plugins: {
-          legend: { display: true, position: "bottom", labels: { color: text, boxWidth: 8, boxHeight: 8, font: { size: 10 }, filter: (i) => i.text.startsWith("Ramalan") } },
-          tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${fmtInt(c.parsed.y)} kend/jam` } },
+          legend: { display: true, position: "bottom", labels: { color: text, boxWidth: 8, boxHeight: 8, font: { size: 10 }, filter: (i) => i.datasetIndex % 2 === 0 } },   // hanya garis ramalan
+          tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${fmtInt(c.parsed.y)} ${t("vehUnit")}` } },
         },
       },
       plugins: [markerPlugin(() => state.hTraffic)],
@@ -312,11 +313,11 @@
 
     state.charts.rain = new Chart($("#bbfRainChart"), {
       type: "bar",
-      data: { labels, datasets: [{ label: "Hujan (mm/jam)", data: Array.from({ length: H + 1 }, (_, h) => seriAt("hujan", h)), backgroundColor: "#2563eb", borderRadius: 1, barPercentage: 1, categoryPercentage: 0.9 }] },
+      data: { labels, datasets: [{ label: t("rainSeries"), data: Array.from({ length: H + 1 }, (_, h) => seriAt("hujan", h)), backgroundColor: "#2563eb", borderRadius: 1, barPercentage: 1, categoryPercentage: 0.9 }] },
       options: {
         ...common,
         scales: { ...common.scales, y: { ...common.scales.y, suggestedMax: 1 } },
-        plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => `Hujan: ${fmt1(c.parsed.y)} mm/jam` } } },
+        plugins: { legend: { display: false }, tooltip: { callbacks: { label: (c) => `${t("rain")}: ${fmt1(c.parsed.y)} ${t("rainUnit")}` } } },
       },
       plugins: [markerPlugin(() => state.hWeather)],
     });
@@ -358,37 +359,37 @@
       const act = h > 0 ? seriAt(`flow_${d}`, h) : null;
       const dj = djAt(d, h);
       const c = condition(dj);
-      let sub = "teramati";
+      let sub = t("observed");
       if (h > 0 && act !== null && pred !== null) {
         const diff = Math.round(pred - act);
-        sub = `aktual ${fmtInt(act)} · selisih ${diff > 0 ? "+" : ""}${fmtInt(diff)}`;
+        sub = t("actualDiff", { actual: fmtInt(act), diff: `${diff > 0 ? "+" : ""}${fmtInt(diff)}` });
       } else if (h > 0) {
-        sub = seriAt("ulang", h) ? "rekaman ulangan, diabaikan" : "aktual tidak terekam";
+        sub = t(seriAt("ulang", h) ? "replayed" : "notRecorded");
       }
-      return `<div class="bbf-card"><div class="k">Arus ${DIR_LABEL[d].toLowerCase()}</div>
-        <div class="v">${fmtInt(pred)}<span class="u">kend/jam</span></div>
+      return `<div class="bbf-card"><div class="k">${t(d === "menjauhi" ? "flowAway" : "flowTowards")}</div>
+        <div class="v">${fmtInt(pred)}<span class="u">${t("vehUnit")}</span></div>
         <div class="s">${sub}</div>
-        <div class="bbf-cond ${c.cls}" title="Derajat kejenuhan dari SMP/jam ÷ kapasitas">${c.text} · DJ ${dj === null ? "-" : dj.toFixed(2)}</div></div>`;
+        <div class="bbf-cond ${c.cls}" title="${t("djTitle")}">${c.text} · ${t("dj")} ${dj === null ? "-" : dj.toFixed(2)}</div></div>`;
     });
     const smp = DIRS.map((d) => trafficAt(d, "smp", h));
     const mae = h > 0 ? state.meta.mae_flow_per_h[h - 1] : null;
-    parts.push(`<div class="bbf-card"><div class="k">SMP total</div><div class="v">${fmtInt(smp.every((v) => v !== null) ? smp[0] + smp[1] : null)}<span class="u">smp/jam</span></div><div class="s">kedua arah</div></div>`);
-    parts.push(`<div class="bbf-card"><div class="k">Galat tipikal</div><div class="v">${h === 0 ? "-" : "±" + fmtInt(mae)}<span class="u">kend/jam</span></div><div class="s">MAE uji pada horizon ini</div></div>`);
+    parts.push(`<div class="bbf-card"><div class="k">${t("pcuTotal")}</div><div class="v">${fmtInt(smp.every((v) => v !== null) ? smp[0] + smp[1] : null)}<span class="u">${t("pcuUnit")}</span></div><div class="s">${t("bothDirections")}</div></div>`);
+    parts.push(`<div class="bbf-card"><div class="k">${t("typicalError")}</div><div class="v">${h === 0 ? "-" : "±" + fmtInt(mae)}<span class="u">${t("vehUnit")}</span></div><div class="s">${t("maeNote")}</div></div>`);
     return parts.join("");
   }
 
   function cardsWeather(h) {
     const rain = seriAt("hujan", h);
     return [
-      `<div class="bbf-card"><div class="k">Hujan</div><div class="v">${fmt1(rain)}<span class="u">mm/jam</span></div><div class="s">${rainClass(rain)}</div></div>`,
-      `<div class="bbf-card"><div class="k">Suhu</div><div class="v">${fmt1(seriAt("suhu", h))}<span class="u">°C</span></div><div class="s">kelembapan ${fmtInt(seriAt("rh", h))}%</div></div>`,
-      `<div class="bbf-card"><div class="k">Awan</div><div class="v">${fmtInt(seriAt("awan", h))}<span class="u">%</span></div></div>`,
-      `<div class="bbf-card"><div class="k">Angin</div><div class="v">${fmt1(seriAt("angin", h))}<span class="u">km/jam</span></div></div>`,
+      `<div class="bbf-card"><div class="k">${t("rain")}</div><div class="v">${fmt1(rain)}<span class="u">${t("rainUnit")}</span></div><div class="s">${rainClass(rain)}</div></div>`,
+      `<div class="bbf-card"><div class="k">${t("temperature")}</div><div class="v">${fmt1(seriAt("suhu", h))}<span class="u">°C</span></div><div class="s">${t("humidity", { n: fmtInt(seriAt("rh", h)) })}</div></div>`,
+      `<div class="bbf-card"><div class="k">${t("cloud")}</div><div class="v">${fmtInt(seriAt("awan", h))}<span class="u">%</span></div></div>`,
+      `<div class="bbf-card"><div class="k">${t("wind")}</div><div class="v">${fmt1(seriAt("angin", h))}<span class="u">${t("speedUnit")}</span></div></div>`,
     ].join("");
   }
 
   function sliderText(h) {
-    return `+${h * state.meta.langkah_menit} mnt · ${hhmm(timeAt(h))} WIB`;
+    return `+${h * state.meta.langkah_menit} ${t("minutes")} · ${hhmm(timeAt(h))} WIB`;
   }
 
   function updateView() {
@@ -398,8 +399,8 @@
       $(`${id}Val`).textContent = sliderText(h);
       $(id).setAttribute("aria-valuetext", sliderText(h));
     });
-    $("#bbfTrafficHead").textContent = `Traffic ${state.hTraffic === 0 ? "saat ini (teramati)" : "ramalan " + sliderText(state.hTraffic)}`;
-    $("#bbfWeatherHead").textContent = `Cuaca ${sliderText(state.hWeather)}`;
+    $("#bbfTrafficHead").textContent = state.hTraffic === 0 ? t("headNow") : t("headTraffic", { time: sliderText(state.hTraffic) });
+    $("#bbfWeatherHead").textContent = t("headWeather", { time: sliderText(state.hWeather) });
     $("#bbfTrafficCards").innerHTML = cardsTraffic(state.hTraffic);
     $("#bbfWeatherCards").innerHTML = cardsWeather(state.hWeather);
     Object.values(state.charts).forEach((c) => c && c.update("none"));
@@ -410,16 +411,17 @@
   function setMode(mode) {
     state.mode = mode;
     document.querySelectorAll(".bbf-seg button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.mode === mode)));
-    $("#bbfModeHint").textContent = mode === "terkunci"
-      ? "Traffic dan cuaca selalu di horizon yang sama."
-      : "Traffic dan cuaca diatur sendiri-sendiri.";
+    const hint = $("#bbfModeHint");
+    hint.setAttribute("data-i18n", mode === "terkunci" ? "hintLocked" : "hintFree");
+    hint.textContent = t(hint.getAttribute("data-i18n"));
     if (mode === "terkunci") state.hWeather = state.hTraffic;
     updateView();
   }
 
-  function fail(message, err) {
-    console.error(message, err);
-    $("#bbfFail").textContent = message;
+  function fail(key, err) {
+    console.error(key, err);
+    state.failKey = key;
+    $("#bbfFail").textContent = t(key);
     $("#bbfFail").hidden = false;
   }
 
@@ -430,19 +432,63 @@
     return data;
   }
 
+  // "latih s.d. 22 Nov" dari server
+  function splitLabel(text) {
+    const match = /^latih s\.d\. (\d+) Nov$/.exec(text || "");
+    if (!match) return text;
+    const date = new Date(Date.UTC(2026, 10, Number(match[1])));
+    return t("trainedUntil", { date: date.toLocaleDateString(I18n.locale, { day: "numeric", month: "short", timeZone: "UTC" }) });
+  }
+
+  function renderNote() {
+    const { meta, data } = state;
+    $("#bbfNote").textContent = t("note", {
+      model: I18n.v(meta.model), split: splitLabel(data.model), source: I18n.v(meta.cuaca_sumber),
+      remark: I18n.v(meta.catatan), point: `${meta.kamera.lat.toFixed(5)}, ${meta.kamera.lon.toFixed(5)}`,
+    });
+  }
+
+  function renderRainTicks() {
+    $("#bbfRainTicks").innerHTML = [(0.1).toLocaleString(I18n.locale), (2.5).toLocaleString(I18n.locale), `≥ ${RAIN_MAX} ${t("rainUnit")}`]
+      .map((s) => `<span>${s}</span>`).join("");
+  }
+
+  function setRoadCredit() {
+    const control = state.maps.road && state.maps.road.map.attributionControl;
+    if (!control || !state.road) return;
+    if (state.roadCredit) control.removeAttribution(state.roadCredit);
+    state.roadCredit = t("roadCredit");
+    control.addAttribution(state.roadCredit);
+  }
+
+  // teks yang dibuat skrip ini; teks statis sudah diganti oleh I18n
+  function relocalize() {
+    renderRainTicks();
+    $("#bbfHeatError").textContent = "";
+    if (!$("#bbfFail").hidden) $("#bbfFail").textContent = t(state.failKey);
+    setRoadCredit();
+    if (!state.meta) return;
+    const origin = $("#bbfOrigin");
+    const selected = origin.value;
+    origin.innerHTML = originOptions();
+    origin.value = selected;
+    if (!state.data) return;
+    renderNote();
+    buildCharts();
+    updateView();
+  }
+
   async function loadOrigin(iso) {
     try {
       state.data = await getJson(`/api/buahbatu/forecast?asal=${encodeURIComponent(iso)}`);
     } catch (err) {
-      fail("Gagal memuat ramalan untuk waktu acuan ini.", err);
+      fail("failLoad", err);
       return;
     }
     $("#bbfFail").hidden = true;
     if (state.heat.auto) autoRange();
     $("#bbfOrigin").value = state.data.asal;
-    $("#bbfNote").textContent =
-      `Ramalan arus: ${state.meta.model}; ${state.data.model} (out-of-sample). Cuaca: ${state.meta.cuaca_sumber}. ` +
-      `${state.meta.catatan} Titik kamera ${state.meta.kamera.lat.toFixed(5)}, ${state.meta.kamera.lon.toFixed(5)}.`;
+    renderNote();
     buildCharts();
     updateView();
   }
@@ -496,10 +542,12 @@
 
   async function start() {
     wireTheme();
+    renderRainTicks();
+    I18n.onChange(relocalize);
     try {
       state.meta = await getJson("/api/buahbatu/forecast/meta");
     } catch (err) {
-      fail("Data ramalan Buah Batu belum tersedia di server.", err);
+      fail("failMeta", err);
       return;
     }
     $("#bbfOrigin").innerHTML = originOptions();
@@ -508,9 +556,9 @@
     state.maps = { road: makeMap("bbfRoadMap"), rain: makeMap("bbfRainMap") };
     try {
       state.road = await getJson(ROAD_URL);
-      state.maps.road.map.attributionControl.addAttribution("Geometri jalan © OpenStreetMap");
+      setRoadCredit();
     } catch (err) {
-      fail("Geometri Jalan Buah Batu gagal dimuat, heatmap jalan tidak tampil.", err);
+      fail("failRoad", err);
     }
     wire();
     focusMap("road");

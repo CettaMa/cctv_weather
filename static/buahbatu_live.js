@@ -29,9 +29,16 @@
   let lastProgress = Date.now();
   let mediaRecovered = false;
 
-  function show(text, canRetry) {
+  let shown = { key: "videoConnecting", reason: null };   // untuk diterjemahkan ulang saat ganti bahasa
+
+  function renderMessage() {
+    message.textContent = I18n.t(shown.key, shown.reason ? { reason: I18n.t(shown.reason) } : null);
+  }
+
+  function show(key, canRetry, reason) {
+    shown = { key, reason: reason || null };
     status.hidden = false;
-    message.textContent = text;
+    renderMessage();
     retry.hidden = !canRetry;
   }
 
@@ -41,9 +48,9 @@
     if (hls) { hls.destroy(); hls = null; }
   }
 
-  function fail(text) {
+  function fail(reason) {
     stop();
-    show(`${text}. Mencoba lagi otomatis…`, true);
+    show("videoRetrying", true, reason);
     retryTimer = setTimeout(start, RETRY_MS);
   }
 
@@ -56,7 +63,7 @@
     lastTime = -1;
     lastProgress = Date.now();
     mediaRecovered = false;
-    show("Menghubungkan ke kamera…", false);
+    show("videoConnecting", false);
     if (window.Hls && Hls.isSupported()) {
       hls = new Hls(CONFIG);
       hls.on(Hls.Events.MANIFEST_PARSED, play);
@@ -67,7 +74,7 @@
           hls.recoverMediaError();
           return;
         }
-        fail(data.type === Hls.ErrorTypes.NETWORK_ERROR ? "Kamera tidak merespons" : "Video gagal diputar");
+        fail(data.type === Hls.ErrorTypes.NETWORK_ERROR ? "videoNoResponse" : "videoFailed");
       });
       hls.loadSource(url);
       hls.attachMedia(video);
@@ -76,16 +83,18 @@
       video.load();
       play();
     } else {
-      show("Browser ini tidak bisa memutar stream HLS.", false);
+      show("videoUnsupported", false);
     }
   }
 
+  I18n.onChange(renderMessage);
+  renderMessage();
   if (!url) {
-    show("Kamera ini tidak ada di katalog stream.", false);
+    show("videoMissing", false);
     return;
   }
   video.addEventListener("playing", () => { status.hidden = true; });
-  video.addEventListener("error", () => { if (!hls) fail("Video gagal diputar"); });
+  video.addEventListener("error", () => { if (!hls) fail("videoFailed"); });
   retry.addEventListener("click", start);
   setInterval(() => {
     if (retryTimer || document.hidden || (video.paused && lastTime > 0)) { lastProgress = Date.now(); return; }
@@ -93,7 +102,7 @@
       lastTime = video.currentTime;
       lastProgress = Date.now();
     } else if (Date.now() - lastProgress > STALL_MS) {
-      fail("Stream berhenti mengirim video");
+      fail("videoStalled");
     }
   }, 5000);
   start();

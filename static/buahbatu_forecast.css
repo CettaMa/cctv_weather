@@ -156,6 +156,17 @@ h1, h2, p { margin: 0; }
 @media (max-width: 560px) {
   .bbf-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .bbf-map { height: 260px; }
+}
+
+/* pengalih bahasa (halaman ramalan dan About) */
+.bbf-lang { display: flex; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); overflow: hidden; }
+.bbf-lang button { background: transparent; color: var(--text); border: 0; padding: 5px 10px; cursor: pointer; font: inherit; }
+.bbf-lang button + button { border-left: 1px solid var(--border-strong); }
+.bbf-lang button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); font-weight: 700; }
+html:lang(ja) body { font-family: 'Public Sans', 'Noto Sans JP', 'Yu Gothic UI', Meiryo, sans-serif; }
+
+@media (max-width: 760px) {
   .bbf-topbar { flex-wrap: wrap; justify-content: space-between; }
   .bbf-titles { order: 1; flex-basis: 100%; }
+  .bbf-lang { order: 2; }
 }

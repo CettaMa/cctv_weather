@@ -11,6 +11,7 @@ Tests all new features:
 import os
 import sys
 import json
+import re
 import unittest
 import numpy as np
 from pathlib import Path
@@ -110,6 +111,50 @@ class TestFlaskPlatformAPI(unittest.TestCase):
         old = self.client.get("/?ramalan=buahbatu")
         self.assertEqual(old.status_code, 302)
         self.assertTrue(old.headers["Location"].endswith("/ramalan/buahbatu"))
+
+    def test_about_page(self):
+        res = self.client.get("/about")
+        self.assertEqual(res.status_code, 200)
+        for logo in ("teknik-komputer", "dpri-ku", "brin", "atcs"):
+            self.assertIn(f"/static/logos/{logo}.png".encode(), res.data)
+            image = self.client.get(f"/static/logos/{logo}.png")
+            self.assertEqual(image.status_code, 200)
+            image.close()
+        self.assertIn(b'href="/about"', self.client.get("/").data)
+
+    def test_map_and_forecast_translations_are_complete(self):
+        literal = r'"(?:[^"\\]|\\.)*"'
+        pages = (
+            ("/", "i18n_peta.js", [BASE_DIR / "templates" / "index.html"]),
+            ("/ramalan/buahbatu", "i18n_ramalan.js",
+             [BASE_DIR / "static" / "buahbatu_forecast.js", BASE_DIR / "static" / "buahbatu_live.js"]),
+        )
+        for url, dictionary, sources in pages:
+            html = self.client.get(url).get_data(as_text=True)
+            for lang in ("id", "ja", "en"):
+                self.assertIn(f'data-lang="{lang}"', html)
+            script = (BASE_DIR / "static" / dictionary).read_text(encoding="utf-8")
+            block = script.split("I18n.add({", 1)[1].split("I18n.addValues(", 1)[0]
+            entries = dict(re.findall(rf"^  (\w+): \[((?:\s*{literal},?)+)\s*\],", block, re.M))
+            for key, body in entries.items():
+                texts = re.findall(literal, body)
+                self.assertEqual(len(texts), 3, f"{dictionary}: {key}")
+                self.assertNotIn('""', texts, f"{dictionary}: {key}")
+            self.assertEqual(len(entries), len(re.findall(r"^  \w+: \[", block, re.M)), dictionary)
+            used = set(re.findall(r'data-i18n(?:-title|-aria|-placeholder)?="(\w+)"', html))
+            for source in sources:
+                used |= set(re.findall(r"""\bt\(["'](\w+)["']""", source.read_text(encoding="utf-8")))
+            self.assertEqual(used - set(entries), set(), dictionary)
+
+    def test_about_page_translations_are_complete(self):
+        html = self.client.get("/about").get_data(as_text=True)
+        used = set(re.findall(r'data-i18n="(\w+)"', html)) | {"title"}
+        script = (BASE_DIR / "static" / "about.js").read_text(encoding="utf-8")
+        for lang in ("en", "id", "ja"):
+            self.assertIn(f'data-lang="{lang}"', html)
+            block = re.search(rf"\n    {lang}: \{{(.*?)\n    \}},", script, re.S).group(1)
+            keys = set(re.findall(r"^      (\w+):", block, re.M))
+            self.assertEqual(keys, used, lang)
 
     def test_api_intersections(self):
         res = self.client.get("/api/intersections")

@@ -1,0 +1,32 @@
+/* Halaman About. Warna, bilah atas, dan tombol memakai buahbatu_forecast.css. */
+.about-main { max-width: 960px; margin: 0 auto; padding: 24px 16px 48px; display: flex; flex-direction: column; gap: 32px; font-size: 14px; line-height: 1.6; }
+.about-main h2 { font-size: 17px; color: var(--text-strong); margin-bottom: 10px; }
+.about-main a { color: var(--accent); }
+.about-lead { max-width: 68ch; font-size: 15px; }
+
+.about-features { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 28px; margin: 18px 0 0; }
+.about-features div { border-top: 1px solid var(--border-strong); padding-top: 10px; }
+.about-features dt { font-weight: 700; color: var(--text-strong); }
+.about-features dd { margin: 4px 0 0; }
+
+.about-logos { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin: 0; padding: 0; list-style: none; }
+.about-logos li { display: flex; flex-direction: column; align-items: center; text-align: center; }
+.about-logos strong { color: var(--text-strong); margin-top: 8px; }
+.about-logos span { font-size: 12.5px; color: var(--muted); line-height: 1.4; }
+/* latar logo solid, jadi petaknya selalu terang di kedua tema */
+.about-logo { width: 100%; height: 170px; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #fff; border: 1px solid var(--border); border-radius: var(--radius-md); }
+.about-logo img { width: auto; height: 132px; max-width: 100%; object-fit: contain; }
+/* kedua gambar ini punya ruang kosong lebar di sekeliling logonya */
+.about-logo-tk { background: #f7f7f7; }
+.about-logo-tk img { height: 200px; max-width: none; }
+.about-logo-atcs img { height: 170px; max-width: none; }
+
+.about-sources { margin: 0; padding-left: 18px; }
+.about-sources span { white-space: pre-wrap; }
+
+html:lang(ja) .about-lead { max-width: 44em; }
+
+@media (max-width: 760px) {
+  .about-logos { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .about-features { grid-template-columns: minmax(0, 1fr); }
+}
