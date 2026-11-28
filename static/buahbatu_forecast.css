@@ -1,0 +1,122 @@
+/* Panel ramalan traffic + cuaca untuk CCTV Terusan Buah Batu - Jembatan Tol 02 */
+.bbf-panel {
+  width: 348px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - var(--topbar-h, 48px) - 40px);
+  overflow-y: auto;
+  background: var(--panel-bg);
+  color: var(--text);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-panel);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  backdrop-filter: blur(6px);
+}
+.bbf-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px 8px;
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  background: var(--panel-bg);
+  z-index: 1;
+}
+.bbf-title { font-weight: 700; font-size: 13px; color: var(--text-strong); line-height: 1.3; }
+.bbf-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.bbf-close {
+  border: 1px solid var(--border-strong);
+  background: transparent;
+  color: var(--text);
+  border-radius: var(--radius-sm);
+  width: 26px;
+  height: 26px;
+  cursor: pointer;
+  flex: none;
+}
+.bbf-close:hover { border-color: var(--border-strong-hover); color: var(--text-strong); }
+.bbf-body { padding: 10px 12px 12px; display: flex; flex-direction: column; gap: 12px; }
+.bbf-row { display: flex; align-items: center; gap: 6px; }
+.bbf-row select {
+  flex: 1;
+  min-width: 0;
+  background: var(--surface-lowest);
+  color: var(--text-strong);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: 5px 6px;
+  font: inherit;
+}
+.bbf-btn {
+  background: var(--surface-lowest);
+  color: var(--text-strong);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: 5px 8px;
+  cursor: pointer;
+  font: inherit;
+}
+.bbf-btn:hover { border-color: var(--border-strong-hover); }
+.bbf-label { font-size: 10px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+.bbf-seg { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid var(--border-strong); border-radius: var(--radius-sm); overflow: hidden; }
+.bbf-seg button {
+  background: transparent;
+  color: var(--text);
+  border: 0;
+  padding: 6px 4px;
+  cursor: pointer;
+  font: inherit;
+}
+.bbf-seg button[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); font-weight: 700; }
+.bbf-seg-hint { font-size: 10.5px; color: var(--muted); margin-top: 4px; }
+.bbf-slider { display: flex; flex-direction: column; gap: 3px; }
+.bbf-slider-top { display: flex; justify-content: space-between; align-items: baseline; }
+.bbf-slider-name { font-weight: 600; color: var(--text-strong); }
+.bbf-slider-val { font-family: var(--font-mono); font-size: 11px; color: var(--accent); font-weight: 700; }
+.bbf-slider input[type="range"] { width: 100%; accent-color: var(--accent); cursor: pointer; }
+.bbf-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.bbf-card { background: var(--surface-lowest); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 6px 8px; }
+.bbf-card .k { font-size: 10.5px; color: var(--muted); }
+.bbf-card .v { font-family: var(--font-mono); font-size: 15px; font-weight: 700; color: var(--text-strong); margin-top: 1px; }
+.bbf-card .u { font-size: 10px; font-weight: 500; color: var(--muted); margin-left: 2px; }
+.bbf-card .s { font-size: 10.5px; color: var(--muted); margin-top: 1px; }
+.bbf-cond { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 999px; margin-top: 3px; }
+.bbf-cond.lancar { background: var(--success-soft); color: var(--success); }
+.bbf-cond.padat { background: var(--warning-soft); color: var(--warning); }
+.bbf-cond.macet { background: var(--danger-soft); color: var(--danger); }
+.bbf-chart { position: relative; height: 112px; }
+.bbf-toggles { display: flex; flex-wrap: wrap; gap: 10px; }
+.bbf-toggles label { display: inline-flex; align-items: center; gap: 5px; cursor: pointer; color: var(--text-strong); }
+.bbf-swatch { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.bbf-heat { margin-top: 8px; display: flex; flex-direction: column; gap: 5px; }
+.bbf-heat-top { display: flex; justify-content: space-between; align-items: center; gap: 6px; color: var(--text-strong); font-weight: 600; }
+.bbf-toggle { padding: 2px 8px; font-size: 11px; }
+.bbf-toggle[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); font-weight: 700; }
+.bbf-num { flex: 1; display: flex; align-items: center; gap: 5px; color: var(--muted); font-size: 11px; }
+.bbf-num input {
+  width: 100%;
+  min-width: 0;
+  background: var(--surface-lowest);
+  color: var(--text-strong);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: 4px 6px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+.bbf-error { color: var(--danger); font-size: 10.5px; }
+.bbf-error:empty { display: none; }
+.bbf-legend { padding: 0 6px; }
+.bbf-legend-marks { position: relative; height: 13px; }
+.bbf-mark { position: absolute; transform: translateX(-50%); font-size: 11px; line-height: 13px; color: var(--text-strong); cursor: default; }
+.bbf-legend-bar { height: 8px; border-radius: 4px; }
+.bbf-legend-ticks { display: flex; justify-content: space-between; font-family: var(--font-mono); font-size: 10px; color: var(--muted); margin-top: 2px; }
+.bbf-note { font-size: 10.5px; color: var(--muted); line-height: 1.45; }
+.bbf-empty { padding: 12px; color: var(--muted); }
+.bbf-open-btn { margin-top: 6px; width: 100%; }
+@media (max-width: 600px) {
+  .bbf-panel { width: calc(100vw - 32px); max-height: 60vh; }
+}

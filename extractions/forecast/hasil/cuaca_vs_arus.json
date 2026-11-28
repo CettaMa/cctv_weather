@@ -1,0 +1,42 @@
+{
+ "parsial_hujan_menjauhi": {
+  "n": 130,
+  "rho_parsial": -0.11034604370594597,
+  "p": 0.21136982549640218
+ },
+ "parsial_hujan_mendekati": {
+  "n": 130,
+  "rho_parsial": -0.04470777755407676,
+  "p": 0.6135050903055131
+ },
+ "ablasi": {
+  "lightgbm_cuaca_asal_vs_lightgbm_tanpa_cuaca": {
+   "mae_a": 405.0830334970588,
+   "mae_b": 407.47043873363515,
+   "dm_stat": -0.19801065155115397,
+   "p": 0.8430367300005771
+  },
+  "lightgbm_cuaca_sempurna_vs_lightgbm_tanpa_cuaca": {
+   "mae_a": 399.1742054238208,
+   "mae_b": 407.47043873363515,
+   "dm_stat": -2.085233285115575,
+   "p": 0.03704812991435019
+  },
+  "mae_saat_hujan": {
+   "lightgbm_tanpa_cuaca": 908.0747583667066,
+   "lightgbm_cuaca_asal": 889.5813400202884,
+   "lightgbm_cuaca_sempurna": 867.5997126384651,
+   "profil_historis": 995.5138841775744,
+   "n": 382
+  },
+  "porsi_kontribusi_cuaca_pct": 14.252690685536765
+ },
+ "jam_teramati": {
+  "menjauhi": 130,
+  "mendekati": 130
+ },
+ "jam_hujan_ge_0.5": {
+  "menjauhi": 20,
+  "mendekati": 20
+ }
+}

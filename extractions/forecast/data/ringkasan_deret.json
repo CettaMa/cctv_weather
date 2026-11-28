@@ -1,0 +1,23 @@
+{
+ "bin_total_per_arah": 4569,
+ "menjauhi": {
+  "teramati": 1532,
+  "diimputasi": 149,
+  "kosong": 2888,
+  "teramati_per_bagian": {
+   "latih": 1123,
+   "uji": 251,
+   "validasi": 158
+  }
+ },
+ "mendekati": {
+  "teramati": 1532,
+  "diimputasi": 149,
+  "kosong": 2888,
+  "teramati_per_bagian": {
+   "latih": 1123,
+   "uji": 251,
+   "validasi": 158
+  }
+ }
+}

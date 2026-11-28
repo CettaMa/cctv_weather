@@ -1,35 +1,37 @@
-# Gunakan image Python versi slim agar lebih ringan dan cepat
+# Image Python slim agar ringan
 FROM python:3.11-slim
 
-# Set environment variables agar output Python tidak dibuffer
-ENV PYTHONUNBUFFERED=1
-ENV PYTHONDONTWRITEBYTECODE=1
+# TZ: jam "WIB" yang ditampilkan aplikasi berasal dari datetime.now()
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    TZ=Asia/Jakarta
 
-# Tentukan direktori kerja di dalam kontainer
 WORKDIR /app
 
-# Install system runtime dependencies (libgomp1 for LightGBM, curl for health checks)
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    libgomp1 \
-    curl \
+# libgomp1 dibutuhkan LightGBM
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
-# Salin file requirements terlebih dahulu untuk memanfaatkan cache layer Docker
+# Aplikasi berjalan sebagai user biasa, bukan root
+RUN useradd --system --uid 10001 --no-create-home app
+
+# Dependensi lebih dulu supaya layer-nya tetap ter-cache saat kode berubah
 COPY requirements.txt .
+RUN pip install -r requirements.txt
 
-# Install dependensi
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Salin seluruh kode proyek ke dalam kontainer
+# Kode milik root (tidak bisa diubah aplikasi); hanya csv/ dan outputs/ yang boleh ditulis
 COPY . .
+RUN chown -R app:app csv outputs
 
-# Beri tahu Docker bahwa aplikasi ini berjalan di port 8000 (secara default)
+USER app
+
 EXPOSE 8000
 
-# Healthcheck untuk memantau kesiapan kontainer
-HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
-    CMD curl -f http://localhost:${PORT:-8000}/api/status || exit 1
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+    CMD ["python", "-c", "import os,urllib.request; urllib.request.urlopen('http://127.0.0.1:%s/api/refresh-state' % os.environ.get('PORT','8000'), timeout=4)"]
 
-# Jalankan server menggunakan Gunicorn (production-grade server)
-# Kita menggunakan bind port dari env var $PORT agar kompatibel dengan Render
-CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:${PORT:-8000} --worker-class gthread --workers 1 --threads 32 --timeout 120 --graceful-timeout 30 --keep-alive 5 app:app"]
+# Port diatur lewat env PORT (kompatibel dengan Render); lihat gunicorn.conf.py
+CMD ["gunicorn", "-c", "gunicorn.conf.py", "app:app"]

@@ -1,0 +1,147 @@
+{
+ "varian_deep": {
+  "itransformer": {
+   "dipilih": "itransformer_in144",
+   "mae_validasi": {
+    "itransformer_in144": 443.1,
+    "itransformer_in288": 509.4
+   }
+  },
+  "lstm": {
+   "dipilih": "lstm_in144",
+   "mae_validasi": {
+    "lstm_in144": 462.9,
+    "lstm_in288": 524.3
+   }
+  },
+  "nhits": {
+   "dipilih": "nhits_in144",
+   "mae_validasi": {
+    "nhits_in144": 465.7,
+    "nhits_in288": 490.5
+   }
+  },
+  "patchtst": {
+   "dipilih": "patchtst_in288",
+   "mae_validasi": {
+    "patchtst_in144": 486.8,
+    "patchtst_in288": 361.7
+   }
+  },
+  "tft": {
+   "dipilih": "tft_in144",
+   "mae_validasi": {
+    "tft_in144": 457.8,
+    "tft_in288": 472.4
+   }
+  },
+  "tide": {
+   "dipilih": "tide_in288",
+   "mae_validasi": {
+    "tide_in144": 632.9,
+    "tide_in288": 403.3
+   }
+  }
+ },
+ "ensemble_dari": [
+  "patchtst",
+  "xgboost_cuaca_sempurna",
+  "lightgbm_cuaca_asal"
+ ],
+ "mae_validasi": {
+  "lightgbm_tanpa_cuaca": 390.57032935403043,
+  "xgboost_tanpa_cuaca": 392.621779653903,
+  "lightgbm_cuaca_asal": 386.95391432248306,
+  "xgboost_cuaca_asal": 387.9304454328467,
+  "lightgbm_cuaca_sempurna": 394.29056887424696,
+  "xgboost_cuaca_sempurna": 384.86375351893133,
+  "itransformer": 443.12026302947226,
+  "lstm": 462.89126893568795,
+  "nhits": 465.72926873164954,
+  "patchtst": 361.7223466521795,
+  "tft": 457.8214999994936,
+  "tide": 403.2637162748205
+ },
+ "terbaik_uji": "ensemble",
+ "diebold_mariano": {
+  "ensemble_vs_profil_historis": {
+   "stat": -4.09,
+   "p": 0.0
+  },
+  "ensemble_vs_seasonal_naive": {
+   "stat": -4.03,
+   "p": 0.0001
+  }
+ },
+ "smp": {
+  "validasi": {
+   "persistence": {
+    "n": 1592,
+    "MAE": 347.56520248067113,
+    "RMSE": 542.0150930125844,
+    "WAPE": 24.829044034900647
+   },
+   "seasonal_naive": {
+    "n": 1592,
+    "MAE": 166.1992154126038,
+    "RMSE": 236.42187954181546,
+    "WAPE": 11.8727870586382
+   },
+   "profil_historis": {
+    "n": 1592,
+    "MAE": 164.36919380568204,
+    "RMSE": 236.28855824935368,
+    "WAPE": 11.742055654174296
+   },
+   "lightgbm_tanpa_cuaca": {
+    "n": 1592,
+    "MAE": 164.92988043971764,
+    "RMSE": 237.86882850091354,
+    "WAPE": 11.782109471492282
+   },
+   "lightgbm_cuaca_sempurna": {
+    "n": 1592,
+    "MAE": 168.51088435435923,
+    "RMSE": 244.80545751632576,
+    "WAPE": 12.037925943484275
+   }
+  },
+  "uji": {
+   "persistence": {
+    "n": 4082,
+    "MAE": 347.3157111291306,
+    "RMSE": 492.5229303622265,
+    "WAPE": 29.598999466288493
+   },
+   "seasonal_naive": {
+    "n": 4082,
+    "MAE": 165.62330258907085,
+    "RMSE": 222.6413053213748,
+    "WAPE": 14.114777673032464
+   },
+   "profil_historis": {
+    "n": 4082,
+    "MAE": 161.7890082519292,
+    "RMSE": 217.18562259566306,
+    "WAPE": 13.788010779390694
+   },
+   "lightgbm_tanpa_cuaca": {
+    "n": 4082,
+    "MAE": 148.68513006340976,
+    "RMSE": 207.00812458138066,
+    "WAPE": 12.671269811216954
+   },
+   "lightgbm_cuaca_sempurna": {
+    "n": 4082,
+    "MAE": 152.64792125815214,
+    "RMSE": 211.3912964626982,
+    "WAPE": 13.008987486230462
+   }
+  }
+ },
+ "baris": {
+  "validasi": 1592,
+  "uji": 4082
+ },
+ "asal_uji": 245
+}

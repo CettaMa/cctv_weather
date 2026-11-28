@@ -1,0 +1,60 @@
+{
+ "cv_mae": {
+  "persistence": 934.8066997723029,
+  "seasonal_naive": 380.9449526828438,
+  "profil_historis": 336.84801551528665,
+  "lightgbm": 280.11729605829197,
+  "xgboost": 276.5404155939242
+ },
+ "lightgbm": {
+  "params": {
+   "objective": "l2",
+   "learning_rate": 0.05754146753929072,
+   "num_leaves": 10,
+   "min_child_samples": 85,
+   "feature_fraction": 0.6626818890312742,
+   "bagging_fraction": 0.5919085627322703,
+   "lambda_l2": 0.003608746831399877,
+   "bagging_freq": 1,
+   "metric": "l1"
+  },
+  "iter": 154
+ },
+ "xgboost": {
+  "params": {
+   "objective": "reg:squarederror",
+   "learning_rate": 0.048415808570433885,
+   "max_depth": 3,
+   "min_child_weight": 16.238247996717973,
+   "subsample": 0.8998733194275798,
+   "colsample_bytree": 0.6783457454499046,
+   "reg_lambda": 0.051757811213082705
+  },
+  "iter": 133
+ },
+ "fold_awal": [
+  "2026-11-15 00:00:00+07:00",
+  "2026-11-16 00:00:00+07:00",
+  "2026-11-17 00:00:00+07:00",
+  "2026-11-18 00:00:00+07:00",
+  "2026-11-20 00:00:00+07:00"
+ ],
+ "fold_baris": [
+  [
+   15280,
+   1234
+  ],
+  [
+   16746,
+   3520
+  ],
+  [
+   20746,
+   2556
+  ],
+  [
+   23926,
+   4040
+  ]
+ ]
+}

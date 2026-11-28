@@ -1,8 +1,9 @@
 Flask==3.0.3
 gunicorn==22.0.0
 requests==2.32.3
-opencv-python-headless
-numpy
+opencv-python-headless==5.0.0.93
+numpy==2.4.6
+scipy==1.17.1
 scikit-learn==1.9.1
 lightgbm==4.7.0
-joblib
+joblib==1.6.0

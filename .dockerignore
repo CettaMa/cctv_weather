@@ -1,37 +1,36 @@
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
-env/
-venv/
-.venv/
-.git/
-.gitignore
-.vscode/
-.gemini/
-*.log
-*.html
-!templates/*.html
+# Daftar putih: hanya berkas yang dibutuhkan saat runtime yang masuk ke image.
+# Berkas baru yang dipakai aplikasi harus ditambahkan di sini.
+# Rahasia (.env, spreadsheet RTSP), dataset, venv, dan hasil riset sengaja tidak masuk.
+*
 
-# Video clips, training datasets, and raw frames
-datasets/
-cctv_video_samples/
-outputs/cctv_clips/
-cctv_keyframes/
-weather/dataset/
-weather/dataset_frames*/
-weather/output_picture/
-weather/models_ml/
-weather/*/dataset_frames*/
-weather/*/dataset_frames_raw*/
-weather/*/output_picture/
+!requirements.txt
+!gunicorn.conf.py
+!app.py
+
+!templates/
+!static/
+
+!script_tools/
+script_tools/**/__pycache__
+
+!csv/
+csv/*
+!csv/*.csv
+# cadangan hasil sinkronisasi lama
+csv/*_20??????_??????.csv
+
+!outputs/
+outputs/*
+!outputs/buahbatu_forecast.json
+!outputs/elevation_grid.json
+!outputs/roi_annotations.json
+!outputs/traffic_telemetry.json
+
+!weather/
+weather/*
+!weather/thresholds_sp_buahbatu.json
+!weather/kordon/
+weather/kordon/*
+!weather/kordon/models_ml/
 weather/kordon/models_ml/*
 !weather/kordon/models_ml/lgbm_weather.joblib
-
-# Knowledge graph and IDE caches
-graphify-out/
-.impeccable/
-.pytest_cache/
-*.tmp
-*.bak

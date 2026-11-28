@@ -28,3 +28,10 @@ weather/*/output_picture/
 weather/models_ml/
 weather/kordon/models_ml/*
 !weather/kordon/models_ml/lgbm_weather.joblib
+
+# Sampel video RTSP dan paket anotasi (besar, laporannya memuat kredensial)
+roi_annotator/samples/
+roi_packages/
+
+# Pengaturan lokal
+.claude/

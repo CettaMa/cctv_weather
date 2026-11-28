@@ -1,0 +1,23 @@
+{
+ "sumber": "owm",
+ "lat": -6.9652846,
+ "lon": 107.6381471,
+ "jam": 426,
+ "jam_hilang": 6,
+ "jam_target": 432,
+ "sudah_ada": 426,
+ "panggilan": 6,
+ "versi": "4.0",
+ "jam_baru": 0,
+ "pembanding": {
+  "sumber": "openmeteo",
+  "jam": 426,
+  "korelasi_hujan": 0.129,
+  "korelasi_suhu": 0.873,
+  "korelasi_rh": 0.037,
+  "jam_hujan_ini": 71,
+  "jam_hujan_lain": 48,
+  "total_hujan_ini_mm": 150.2,
+  "total_hujan_lain_mm": 82.7
+ }
+}
