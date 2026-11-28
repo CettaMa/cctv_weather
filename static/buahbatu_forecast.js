@@ -1,19 +1,17 @@
 /*
- * Panel ramalan traffic + cuaca (mode replay) untuk CCTV TERUSAN BUAH BATU-JEMBATAN TOL 02.
+ * Halaman ramalan traffic + cuaca (mode replay) untuk CCTV TERUSAN BUAH BATU-JEMBATAN TOL 02
+ * (/ramalan/buahbatu, templates/buahbatu.html).
  *
  * Data: /api/buahbatu/forecast/meta dan /api/buahbatu/forecast?asal=<ISO>, dibuat oleh
- * extractions/forecast/ekspor_app.py. Panel muncul saat marker kamera ini diklik
- * (index.html mengirim event "cctv:select"). Dua slider horizon (0..+360 menit, langkah 5):
+ * extractions/forecast/ekspor_app.py. Dua slider horizon (0..+360 menit, langkah 5):
  * - Terkunci: traffic dan cuaca selalu di horizon yang sama.
  * - Bebas: masing-masing slider punya horizon sendiri.
- * Hasil ditampilkan sebagai metrik, grafik kecil, dan dua layer peta: heatmap kepadatan yang hanya
- * menutupi badan Jalan Buah Batu (geometri OpenStreetMap, warna menurut arus per arah pada rentang yang
- * bisa diatur) dan lingkaran hujan berjari-jari 1 km di sekitar kamera.
+ * Dua minimap: kepadatan yang hanya menutupi badan Jalan Buah Batu (geometri OpenStreetMap, warna
+ * menurut arus per arah pada rentang yang bisa diatur) dan lingkaran hujan 1 km di sekitar kamera.
  */
 (function () {
   "use strict";
 
-  const CAMERA_NAME = "CCTV TERUSAN BUAH BATU-JEMBATAN TOL 02";
   const RAIN_RADIUS_M = 1000;
   const ROAD_URL = "/static/buahbatu_jalan.json";
   const RAIN_MAX = 5;            // mm/jam untuk cincin paling pekat
@@ -24,6 +22,13 @@
   const HEAT_COLORS = [[16, 185, 129], [250, 204, 21], [249, 115, 22], [220, 38, 38], [112, 16, 48]];
   const HEAT_STEP = 100;         // kend/jam, pembulatan rentang otomatis
   const HEAT_MIN_SPAN = 100;
+  // kunci publik CARTO yang sama dengan peta utama
+  const CARTO_KEY = "cb1_2ew3_1_dbbdad4a42a2c9c38df8da88";
+  const TILE_STYLE = {
+    dark: `https://basemaps.cartocdn.com/gl/dark-matter-gl-style/style.json?key=${CARTO_KEY}`,
+    light: `https://basemaps.cartocdn.com/gl/positron-gl-style/style.json?key=${CARTO_KEY}`,
+  };
+  const HEAT_GRADIENT = `linear-gradient(90deg,${HEAT_COLORS.map((c) => `rgb(${c.join(",")})`).join(",")})`;
 
   const state = {
     meta: null,
@@ -32,16 +37,13 @@
     mode: "terkunci",
     hTraffic: 0,
     hWeather: 0,
-    showTraffic: true,
-    showRain: true,
     heat: { auto: true, min: 0, max: 6000 },   // rentang warna heatmap, kend/jam
-    control: null,
-    layer: null,
+    maps: { road: null, rain: null },   // { map, tiles, layer }
     charts: { traffic: null, rain: null },
   };
 
   // ---------------------------------------------------------------- util
-  const $ = (root, sel) => root.querySelector(sel);
+  const $ = (sel) => document.querySelector(sel);
   const fmtInt = (v) => (v === null || v === undefined || Number.isNaN(v) ? "-" : Math.round(v).toLocaleString("id-ID"));
   const fmt1 = (v) => (v === null || v === undefined || Number.isNaN(v) ? "-" : v.toLocaleString("id-ID", { maximumFractionDigits: 1, minimumFractionDigits: 1 }));
   const cssVar = (name, fallback) => (getComputedStyle(document.documentElement).getPropertyValue(name) || "").trim() || fallback;
@@ -120,16 +122,15 @@
 
   // isi kotak angka dan legenda; kotak yang sedang diketik tidak ditimpa
   function renderHeatControls() {
-    const root = state.control && state.control.getContainer();
-    if (!root || !state.data) return;
+    if (!state.data) return;
     ["min", "max"].forEach((k) => {
-      const input = $(root, `#bbfHeat_${k}`);
+      const input = $(`#bbfHeat_${k}`);
       if (document.activeElement !== input) input.value = state.heat[k];
     });
-    $(root, "#bbfHeatAuto").setAttribute("aria-pressed", String(state.heat.auto));
+    $("#bbfHeatAuto").setAttribute("aria-pressed", String(state.heat.auto));
     const { min, max } = state.heat;
-    $(root, "#bbfLegendTicks").innerHTML = [0, 0.5, 1].map((t) => `<span>${fmtInt(min + (max - min) * t)}</span>`).join("");
-    $(root, "#bbfLegendMarks").innerHTML = DIRS.map((d) => {
+    $("#bbfLegendTicks").innerHTML = [0, 0.5, 1].map((t) => `<span>${fmtInt(min + (max - min) * t)}</span>`).join("");
+    $("#bbfLegendMarks").innerHTML = DIRS.map((d) => {
       const flow = trafficAt(d, "flow", state.hTraffic);
       if (flow === null) return "";
       const out = flow < min ? " (di bawah rentang)" : flow > max ? " (di atas rentang)" : "";
@@ -138,11 +139,11 @@
     }).join("");
   }
 
-  function setHeatRange(root) {
-    const min = parseFloat($(root, "#bbfHeat_min").value);
-    const max = parseFloat($(root, "#bbfHeat_max").value);
+  function setHeatRange() {
+    const min = parseFloat($("#bbfHeat_min").value);
+    const max = parseFloat($("#bbfHeat_max").value);
     const valid = Number.isFinite(min) && Number.isFinite(max) && min >= 0 && max - min >= HEAT_MIN_SPAN;
-    $(root, "#bbfHeatError").textContent = valid ? "" : `Batas atas harus minimal ${HEAT_MIN_SPAN} di atas batas bawah.`;
+    $("#bbfHeatError").textContent = valid ? "" : `Batas atas harus minimal ${HEAT_MIN_SPAN} di atas batas bawah.`;
     if (!valid) return;
     state.heat = { auto: false, min, max };
     renderHeatControls();
@@ -185,24 +186,53 @@
     return side(1).concat(side(-1).reverse());
   }
 
+  const cameraPoint = () => L.latLng(state.meta.kamera.lat, state.meta.kamera.lon);
+  const theme = () => (document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark");
+
+  function makeTiles(map) {
+    return L.maplibreGL({
+      style: TILE_STYLE[theme()],
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    }).addTo(map);
+  }
+
+  function makeMap(id) {
+    // roda gulir dimatikan agar halaman tetap bisa digulir; zoom lewat tombol + / -
+    const map = L.map(id, { scrollWheelZoom: false, zoomSnap: 0.25 }).setView(cameraPoint(), 16);
+    return { map, tiles: makeTiles(map), layer: L.layerGroup().addTo(map) };
+  }
+
+  function addCamera(target) {
+    L.circleMarker(cameraPoint(), {
+      radius: 5, color: cssVar("--text-strong", "#fff"), weight: 1.5, fillOpacity: 1,
+      fillColor: cssVar("--accent", "#38bdf8"),
+    }).bindTooltip("Kamera TOL 02").addTo(target.layer);
+  }
+
   function renderRain() {
+    const target = state.maps.rain;
+    target.layer.clearLayers();
     const rain = seriAt("hujan", state.hWeather);
-    if (!state.showRain || rain === null) return;
-    const wet = rain >= 0.1;
-    const disk = L.circle([state.meta.kamera.lat, state.meta.kamera.lon], {
-      radius: RAIN_RADIUS_M, interactive: false, renderer: state.renderer,
-      color: "#60a5fa", weight: 1.5, opacity: 0.7, dashArray: wet ? null : "6 6", fillOpacity: wet ? 1 : 0,
-    }).addTo(state.layer);
-    const svg = disk._path && disk._path.ownerSVGElement;
-    if (!svg || !wet) return;
-    const a = 0.14 + 0.36 * Math.min(1, rain / RAIN_MAX);
-    setGradient(svg, "bbf-rain-grad", [["0%", "#2563eb", a], ["75%", "#2563eb", a * 0.85], ["100%", "#60a5fa", a * 0.25]]);
-    disk._path.setAttribute("fill", "url(#bbf-rain-grad)");
+    if (rain !== null) {
+      const wet = rain >= 0.1;
+      const disk = L.circle(cameraPoint(), {
+        radius: RAIN_RADIUS_M, interactive: false,
+        color: "#60a5fa", weight: 1.5, opacity: 0.8, dashArray: wet ? null : "6 6", fillOpacity: wet ? 1 : 0,
+      }).addTo(target.layer);
+      const svg = disk._path && disk._path.ownerSVGElement;
+      if (svg && wet) {
+        const a = 0.14 + 0.36 * Math.min(1, rain / RAIN_MAX);
+        setGradient(svg, "bbf-rain-grad", [["0%", "#2563eb", a], ["75%", "#2563eb", a * 0.85], ["100%", "#60a5fa", a * 0.25]]);
+        disk._path.setAttribute("fill", "url(#bbf-rain-grad)");
+      }
+    }
+    addCamera(target);
   }
 
   function renderRoad() {
-    if (!state.showTraffic || !state.road) return;
-    state.road.ruas.forEach((r) => {
+    const target = state.maps.road;
+    target.layer.clearLayers();
+    (state.road ? state.road.ruas : []).forEach((r) => {
       // ruas dua arah di simpang memakai arah yang lebih padat
       const flows = r.arah.map((d) => trafficAt(d, "flow", state.hTraffic)).filter((v) => v !== null);
       if (!flows.length) return;
@@ -213,37 +243,28 @@
       // tiga pita bertumpuk: tepi tipis, tengah pekat
       [[1, 0.45], [0.68, 0.4], [0.34, 0.5]].forEach(([part, alpha], i) => {
         const poly = L.polygon(roadPolygon(r.koordinat, r.lebar_m * part), {
-          stroke: false, fillColor: color, fillOpacity: alpha * heat, interactive: i === 0, renderer: state.renderer,
-        }).addTo(state.layer);
+          stroke: false, fillColor: color, fillOpacity: alpha * heat, interactive: i === 0,
+        }).addTo(target.layer);
         if (i === 0) poly.bindTooltip(`+${state.hTraffic * state.meta.langkah_menit} mnt<br>${rows.join("<br>")}`, { sticky: true });
       });
     });
+    addCamera(target);
   }
 
   function renderLayers() {
     if (!state.data) return;
-    if (!state.layer) {
-      state.layer = L.layerGroup().addTo(map);
-      // peta memakai renderer canvas; gradien radial butuh SVG, jadi layer ini punya renderer sendiri
-      state.renderer = L.svg({ padding: 0.2 });
-    }
-    state.layer.clearLayers();
-    renderRain();
     renderRoad();
-    L.circleMarker([state.meta.kamera.lat, state.meta.kamera.lon], {
-      radius: 4, color: cssVar("--text-strong", "#fff"), weight: 1.5, fillOpacity: 1,
-      fillColor: cssVar("--accent", "#38bdf8"), interactive: false, renderer: state.renderer,
-    }).addTo(state.layer);
+    renderRain();
   }
 
-  // geser peta ke badan jalan atau ke seluruh area cuaca, tanpa tertutup panel
-  function focusMap(target) {
-    const center = L.latLng(state.meta.kamera.lat, state.meta.kamera.lon);
-    const bounds = target === "road" && state.road
+  // pas-kan minimap ke badan jalan atau ke seluruh area cuaca
+  function focusMap(name) {
+    const { map } = state.maps[name];
+    const bounds = name === "road" && state.road
       ? L.latLngBounds(state.road.ruas.flatMap((r) => r.koordinat))
-      : center.toBounds(RAIN_RADIUS_M * 2);
-    const panel = window.innerWidth > 600 ? 370 : 0;
-    map.fitBounds(bounds, { paddingTopLeft: [panel + 20, 20], paddingBottomRight: [20, 20] });
+      : cameraPoint().toBounds(RAIN_RADIUS_M * 2);
+    map.invalidateSize();
+    map.fitBounds(bounds, { padding: [16, 16], animate: false });
   }
 
   // ---------------------------------------------------------------- grafik
@@ -251,7 +272,7 @@
     return { grid: cssVar("--chart-grid", "rgba(30,41,59,0.5)"), text: cssVar("--muted", "#64748b") };
   }
 
-  function buildCharts(root) {
+  function buildCharts() {
     const { grid, text } = chartColors();
     const H = state.meta.h_max;
     const labels = Array.from({ length: H + 1 }, (_, h) => hhmm(timeAt(h)));
@@ -260,8 +281,8 @@
       interaction: { mode: "index", intersect: false },
       plugins: { legend: { display: false } },
       scales: {
-        x: { grid: { color: grid }, ticks: { color: text, maxTicksLimit: 7, font: { size: 9 } } },
-        y: { grid: { color: grid }, ticks: { color: text, maxTicksLimit: 4, font: { size: 9 } }, beginAtZero: true },
+        x: { grid: { color: grid }, ticks: { color: text, maxTicksLimit: 7, font: { size: 10 } } },
+        y: { grid: { color: grid }, ticks: { color: text, maxTicksLimit: 4, font: { size: 10 } }, beginAtZero: true },
       },
     };
     Object.values(state.charts).forEach((c) => c && c.destroy());
@@ -277,19 +298,19 @@
         borderColor: DIR_COLOR[d], backgroundColor: DIR_COLOR[d], showLine: false, pointRadius: 1.8, pointStyle: "circle",
       });
     });
-    state.charts.traffic = new Chart($(root, "#bbfTrafficChart"), {
+    state.charts.traffic = new Chart($("#bbfTrafficChart"), {
       type: "line", data: { labels, datasets },
       options: {
         ...common,
         plugins: {
-          legend: { display: true, position: "bottom", labels: { color: text, boxWidth: 8, boxHeight: 8, font: { size: 9 }, filter: (i) => i.text.startsWith("Ramalan") } },
+          legend: { display: true, position: "bottom", labels: { color: text, boxWidth: 8, boxHeight: 8, font: { size: 10 }, filter: (i) => i.text.startsWith("Ramalan") } },
           tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${fmtInt(c.parsed.y)} kend/jam` } },
         },
       },
       plugins: [markerPlugin(() => state.hTraffic)],
     });
 
-    state.charts.rain = new Chart($(root, "#bbfRainChart"), {
+    state.charts.rain = new Chart($("#bbfRainChart"), {
       type: "bar",
       data: { labels, datasets: [{ label: "Hujan (mm/jam)", data: Array.from({ length: H + 1 }, (_, h) => seriAt("hujan", h)), backgroundColor: "#2563eb", borderRadius: 1, barPercentage: 1, categoryPercentage: 0.9 }] },
       options: {
@@ -322,91 +343,13 @@
     };
   }
 
-  // ---------------------------------------------------------------- panel
-  const HEAT_GRADIENT = `linear-gradient(90deg,${HEAT_COLORS.map((c) => `rgb(${c.join(",")})`).join(",")})`;
-
-  function panelHtml() {
-    const origins = state.meta.asal;
+  // ---------------------------------------------------------------- halaman
+  function originOptions() {
     const byDay = {};
-    origins.forEach((o) => { (byDay[dayLabel(o.t)] = byDay[dayLabel(o.t)] || []).push(o); });
-    const options = Object.entries(byDay).map(([day, list]) =>
+    state.meta.asal.forEach((o) => { (byDay[dayLabel(o.t)] = byDay[dayLabel(o.t)] || []).push(o); });
+    return Object.entries(byDay).map(([day, list]) =>
       `<optgroup label="${day}">${list.map((o) => `<option value="${o.t}">${day} ${hhmm(new Date(o.t))}</option>`).join("")}</optgroup>`
     ).join("");
-    const H = state.meta.h_max;
-    return `
-      <div class="bbf-head">
-        <div>
-          <div class="bbf-title">Ramalan traffic &amp; cuaca</div>
-          <div class="bbf-sub">Terusan Buah Batu – Jembatan Tol 02 · mode replay</div>
-        </div>
-        <button type="button" class="bbf-close" aria-label="Tutup panel ramalan">✕</button>
-      </div>
-      <div class="bbf-body">
-        <div>
-          <div class="bbf-label"><label for="bbfOrigin">Waktu acuan (0 menit)</label></div>
-          <div class="bbf-row">
-            <button type="button" class="bbf-btn" data-step="-1" aria-label="Waktu acuan sebelumnya">‹</button>
-            <select id="bbfOrigin">${options}</select>
-            <button type="button" class="bbf-btn" data-step="1" aria-label="Waktu acuan berikutnya">›</button>
-          </div>
-        </div>
-        <div>
-          <div class="bbf-label">Mode slider</div>
-          <div class="bbf-seg" role="group" aria-label="Mode slider">
-            <button type="button" data-mode="terkunci" aria-pressed="true">Terkunci</button>
-            <button type="button" data-mode="bebas" aria-pressed="false">Bebas</button>
-          </div>
-          <div class="bbf-seg-hint" id="bbfModeHint">Traffic dan cuaca selalu di horizon yang sama.</div>
-        </div>
-        <div class="bbf-slider">
-          <div class="bbf-slider-top"><label class="bbf-slider-name" for="bbfTraffic">Traffic</label><span class="bbf-slider-val" id="bbfTrafficVal"></span></div>
-          <input id="bbfTraffic" type="range" min="0" max="${H}" step="1" value="0">
-        </div>
-        <div class="bbf-slider">
-          <div class="bbf-slider-top"><label class="bbf-slider-name" for="bbfWeather">Cuaca</label><span class="bbf-slider-val" id="bbfWeatherVal"></span></div>
-          <input id="bbfWeather" type="range" min="0" max="${H}" step="1" value="0">
-        </div>
-        <div>
-          <div class="bbf-label" id="bbfTrafficHead">Traffic</div>
-          <div class="bbf-grid" id="bbfTrafficCards"></div>
-        </div>
-        <div class="bbf-chart"><canvas id="bbfTrafficChart" aria-label="Grafik ramalan arus per arah"></canvas></div>
-        <div>
-          <div class="bbf-label" id="bbfWeatherHead">Cuaca</div>
-          <div class="bbf-grid" id="bbfWeatherCards"></div>
-        </div>
-        <div class="bbf-chart" style="height: 84px;"><canvas id="bbfRainChart" aria-label="Grafik hujan per 5 menit"></canvas></div>
-        <div>
-          <div class="bbf-label">Layer peta</div>
-          <div class="bbf-toggles">
-            <label><input type="checkbox" id="bbfShowTraffic" checked> <span class="bbf-swatch" style="background: ${HEAT_GRADIENT}"></span> Kepadatan jalan</label>
-            <label><input type="checkbox" id="bbfShowRain" checked> <span class="bbf-swatch" style="background:#2563eb"></span> Hujan (radius ${RAIN_RADIUS_M / 1000} km)</label>
-          </div>
-          <div class="bbf-heat">
-            <div class="bbf-heat-top">
-              <span>Rentang warna jalan (kend/jam)</span>
-              <button type="button" class="bbf-btn bbf-toggle" id="bbfHeatAuto" aria-pressed="true" title="Ikuti nilai terkecil dan terbesar ramalan dari waktu acuan">Otomatis</button>
-            </div>
-            <div class="bbf-row">
-              <label class="bbf-num">Bawah <input type="number" id="bbfHeat_min" min="0" step="${HEAT_STEP}" inputmode="numeric"></label>
-              <label class="bbf-num">Atas <input type="number" id="bbfHeat_max" min="0" step="${HEAT_STEP}" inputmode="numeric"></label>
-            </div>
-            <div class="bbf-error" id="bbfHeatError" role="alert"></div>
-            <div class="bbf-legend">
-              <div class="bbf-legend-marks" id="bbfLegendMarks"></div>
-              <div class="bbf-legend-bar" style="background: ${HEAT_GRADIENT}"></div>
-              <div class="bbf-legend-ticks" id="bbfLegendTicks"></div>
-            </div>
-            <div class="bbf-seg-hint">▼ menjauhi · ▽ mendekati (horizon slider traffic)</div>
-          </div>
-          <div class="bbf-row" style="margin-top: 6px;">
-            <button type="button" class="bbf-btn" data-focus="road">Lihat jalan</button>
-            <button type="button" class="bbf-btn" data-focus="rain">Lihat area cuaca</button>
-          </div>
-          <div class="bbf-seg-hint">Seluruh ruas memakai ramalan di titik kamera; hujan adalah nilai satu titik, bukan peta sebaran.</div>
-        </div>
-        <div class="bbf-note" id="bbfNote"></div>
-      </div>`;
   }
 
   function cardsTraffic(h) {
@@ -449,18 +392,16 @@
   }
 
   function updateView() {
-    const root = state.control && state.control.getContainer();
-    if (!root || !state.data) return;
-    $(root, "#bbfTraffic").value = state.hTraffic;
-    $(root, "#bbfWeather").value = state.hWeather;
-    $(root, "#bbfTrafficVal").textContent = sliderText(state.hTraffic);
-    $(root, "#bbfWeatherVal").textContent = sliderText(state.hWeather);
-    $(root, "#bbfTraffic").setAttribute("aria-valuetext", sliderText(state.hTraffic));
-    $(root, "#bbfWeather").setAttribute("aria-valuetext", sliderText(state.hWeather));
-    $(root, "#bbfTrafficHead").textContent = `Traffic ${state.hTraffic === 0 ? "saat ini (teramati)" : "ramalan " + sliderText(state.hTraffic)}`;
-    $(root, "#bbfWeatherHead").textContent = `Cuaca ${sliderText(state.hWeather)}`;
-    $(root, "#bbfTrafficCards").innerHTML = cardsTraffic(state.hTraffic);
-    $(root, "#bbfWeatherCards").innerHTML = cardsWeather(state.hWeather);
+    if (!state.data) return;
+    [["#bbfTraffic", state.hTraffic], ["#bbfWeather", state.hWeather]].forEach(([id, h]) => {
+      $(id).value = h;
+      $(`${id}Val`).textContent = sliderText(h);
+      $(id).setAttribute("aria-valuetext", sliderText(h));
+    });
+    $("#bbfTrafficHead").textContent = `Traffic ${state.hTraffic === 0 ? "saat ini (teramati)" : "ramalan " + sliderText(state.hTraffic)}`;
+    $("#bbfWeatherHead").textContent = `Cuaca ${sliderText(state.hWeather)}`;
+    $("#bbfTrafficCards").innerHTML = cardsTraffic(state.hTraffic);
+    $("#bbfWeatherCards").innerHTML = cardsWeather(state.hWeather);
     Object.values(state.charts).forEach((c) => c && c.update("none"));
     renderHeatControls();
     renderLayers();
@@ -468,149 +409,116 @@
 
   function setMode(mode) {
     state.mode = mode;
-    const root = state.control.getContainer();
-    root.querySelectorAll(".bbf-seg button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.mode === mode)));
-    $(root, "#bbfModeHint").textContent = mode === "terkunci"
+    document.querySelectorAll(".bbf-seg button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.mode === mode)));
+    $("#bbfModeHint").textContent = mode === "terkunci"
       ? "Traffic dan cuaca selalu di horizon yang sama."
       : "Traffic dan cuaca diatur sendiri-sendiri.";
     if (mode === "terkunci") state.hWeather = state.hTraffic;
     updateView();
   }
 
+  function fail(message, err) {
+    console.error(message, err);
+    $("#bbfFail").textContent = message;
+    $("#bbfFail").hidden = false;
+  }
+
+  async function getJson(url) {
+    const res = await fetch(url);
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.reason || res.status);
+    return data;
+  }
+
   async function loadOrigin(iso) {
-    const root = state.control.getContainer();
     try {
-      const res = await fetch(`/api/buahbatu/forecast?asal=${encodeURIComponent(iso)}`);
-      const data = await res.json();
-      if (data.status !== "success") throw new Error(data.reason || "gagal");
-      state.data = data;
-      if (state.heat.auto) autoRange();
+      state.data = await getJson(`/api/buahbatu/forecast?asal=${encodeURIComponent(iso)}`);
     } catch (err) {
-      console.error("Ramalan Buah Batu gagal dimuat:", err);
-      if (typeof showToast === "function") showToast("Gagal memuat ramalan Buah Batu", "⚠️");
+      fail("Gagal memuat ramalan untuk waktu acuan ini.", err);
       return;
     }
-    $(root, "#bbfOrigin").value = state.data.asal;
-    $(root, "#bbfNote").innerHTML =
+    $("#bbfFail").hidden = true;
+    if (state.heat.auto) autoRange();
+    $("#bbfOrigin").value = state.data.asal;
+    $("#bbfNote").textContent =
       `Ramalan arus: ${state.meta.model}; ${state.data.model} (out-of-sample). Cuaca: ${state.meta.cuaca_sumber}. ` +
       `${state.meta.catatan} Titik kamera ${state.meta.kamera.lat.toFixed(5)}, ${state.meta.kamera.lon.toFixed(5)}.`;
-    buildCharts(root);
+    buildCharts();
     updateView();
   }
 
-  function wirePanel(root) {
-    L.DomEvent.disableClickPropagation(root);
-    L.DomEvent.disableScrollPropagation(root);
-    $(root, ".bbf-close").addEventListener("click", closePanel);
-    $(root, "#bbfOrigin").addEventListener("change", (e) => loadOrigin(e.target.value));
-    root.querySelectorAll("[data-step]").forEach((b) => b.addEventListener("click", () => {
-      const sel = $(root, "#bbfOrigin");
+  function wire() {
+    $("#bbfOrigin").addEventListener("change", (e) => loadOrigin(e.target.value));
+    document.querySelectorAll("[data-step]").forEach((b) => b.addEventListener("click", () => {
+      const sel = $("#bbfOrigin");
       const i = Math.max(0, Math.min(sel.options.length - 1, sel.selectedIndex + parseInt(b.dataset.step, 10)));
       if (i !== sel.selectedIndex) loadOrigin(sel.options[i].value);
     }));
-    root.querySelectorAll(".bbf-seg button").forEach((b) => b.addEventListener("click", () => setMode(b.dataset.mode)));
-    $(root, "#bbfTraffic").addEventListener("input", (e) => {
+    document.querySelectorAll(".bbf-seg button").forEach((b) => b.addEventListener("click", () => setMode(b.dataset.mode)));
+    $("#bbfTraffic").addEventListener("input", (e) => {
       state.hTraffic = parseInt(e.target.value, 10) || 0;
       if (state.mode === "terkunci") state.hWeather = state.hTraffic;
       updateView();
     });
-    $(root, "#bbfWeather").addEventListener("input", (e) => {
+    $("#bbfWeather").addEventListener("input", (e) => {
       state.hWeather = parseInt(e.target.value, 10) || 0;
       if (state.mode === "terkunci") state.hTraffic = state.hWeather;
       updateView();
     });
-    $(root, "#bbfShowTraffic").addEventListener("change", (e) => { state.showTraffic = e.target.checked; renderLayers(); });
-    $(root, "#bbfShowRain").addEventListener("change", (e) => { state.showRain = e.target.checked; renderLayers(); });
     ["min", "max"].forEach((k) => {
-      const input = $(root, `#bbfHeat_${k}`);
-      input.addEventListener("input", () => setHeatRange(root));
-      input.addEventListener("blur", () => { $(root, "#bbfHeatError").textContent = ""; renderHeatControls(); });
+      const input = $(`#bbfHeat_${k}`);
+      input.addEventListener("input", setHeatRange);
+      input.addEventListener("blur", () => { $("#bbfHeatError").textContent = ""; renderHeatControls(); });
     });
-    $(root, "#bbfHeatAuto").addEventListener("click", () => {
+    $("#bbfHeatAuto").addEventListener("click", () => {
       state.heat.auto = true;
       autoRange();
-      $(root, "#bbfHeatError").textContent = "";
+      $("#bbfHeatError").textContent = "";
       renderHeatControls();
       renderLayers();
     });
-    root.querySelectorAll("[data-focus]").forEach((b) => b.addEventListener("click", () => focusMap(b.dataset.focus)));
+    document.querySelectorAll("[data-focus]").forEach((b) => b.addEventListener("click", () => focusMap(b.dataset.focus)));
   }
 
-  async function openPanel() {
-    if (!state.meta) {
-      try {
-        const res = await fetch("/api/buahbatu/forecast/meta");
-        const meta = await res.json();
-        if (meta.status !== "success") throw new Error(meta.reason || "tidak tersedia");
-        state.meta = meta;
-      } catch (err) {
-        console.error("Meta ramalan Buah Batu gagal dimuat:", err);
-        if (typeof showToast === "function") showToast("Data ramalan Buah Batu belum tersedia", "⚠️");
-        return;
-      }
+  function wireTheme() {
+    $("#bbfTheme").addEventListener("click", () => {
+      const next = theme() === "dark" ? "light" : "dark";
+      document.documentElement.setAttribute("data-theme", next);
+      try { localStorage.setItem("cctv-theme", next); } catch (e) { /* penyimpanan diblokir */ }
+      Object.values(state.maps).forEach((m) => {
+        if (!m) return;
+        m.map.removeLayer(m.tiles);
+        m.tiles = makeTiles(m.map);
+      });
+      if (state.data) { buildCharts(); updateView(); }
+    });
+  }
+
+  async function start() {
+    wireTheme();
+    try {
+      state.meta = await getJson("/api/buahbatu/forecast/meta");
+    } catch (err) {
+      fail("Data ramalan Buah Batu belum tersedia di server.", err);
+      return;
     }
-    if (!state.road) {
-      try {
-        const res = await fetch(ROAD_URL);
-        if (!res.ok) throw new Error(res.status);
-        state.road = await res.json();
-        if (map.attributionControl) map.attributionControl.addAttribution("Geometri jalan © OpenStreetMap");
-      } catch (err) {
-        console.error("Geometri Jalan Buah Batu gagal dimuat:", err);
-      }
+    $("#bbfOrigin").innerHTML = originOptions();
+    $("#bbfTraffic").max = $("#bbfWeather").max = state.meta.h_max;
+    $("#bbfLegendBar").style.background = HEAT_GRADIENT;
+    state.maps = { road: makeMap("bbfRoadMap"), rain: makeMap("bbfRainMap") };
+    try {
+      state.road = await getJson(ROAD_URL);
+      state.maps.road.map.attributionControl.addAttribution("Geometri jalan © OpenStreetMap");
+    } catch (err) {
+      fail("Geometri Jalan Buah Batu gagal dimuat, heatmap jalan tidak tampil.", err);
     }
-    if (!state.control) {
-      state.control = L.control({ position: "bottomleft" });
-      state.control.onAdd = function () {
-        const div = L.DomUtil.create("div", "bbf-panel leaflet-control");
-        div.setAttribute("role", "region");
-        div.setAttribute("aria-label", "Ramalan traffic dan cuaca Terusan Buah Batu");
-        div.innerHTML = panelHtml();
-        wirePanel(div);
-        return div;
-      };
-      state.control.addTo(map);
-      await loadOrigin(state.meta.asal_default || state.meta.asal[state.meta.asal.length - 1].t);
-      focusMap("road");
-    } else {
-      renderLayers();
-    }
+    wire();
+    focusMap("road");
+    focusMap("rain");
+    await loadOrigin(state.meta.asal_default || state.meta.asal[state.meta.asal.length - 1].t);
   }
 
-  function closePanel() {
-    if (state.control) { map.removeControl(state.control); state.control = null; }
-    if (state.layer) { map.removeLayer(state.layer); state.layer = null; }
-    if (state.renderer) { map.removeLayer(state.renderer); state.renderer = null; }
-    Object.values(state.charts).forEach((c) => c && c.destroy());
-    state.charts = { traffic: null, rain: null };
-    state.data = null;
-    state.hTraffic = 0;
-    state.hWeather = 0;
-    state.mode = "terkunci";
-  }
-
-  window.addEventListener("cctv:select", (e) => {
-    const item = e.detail || {};
-    if ((item.name || "").trim().toUpperCase() === CAMERA_NAME) openPanel();
-  });
-
-  // TOL 01 dan TOL 02 berkoordinat sama di katalog sehingga markernya bertumpuk;
-  // popup keduanya diberi tombol untuk membuka panel ramalan TOL 02.
-  map.on("popupopen", (e) => {
-    const node = e.popup && e.popup._contentNode;
-    const title = node && node.querySelector(".popup-title");
-    if (!title || !/TERUSAN BUAH BATU-JEMBATAN TOL 0[12]/i.test(title.textContent) || node.querySelector(".bbf-open-btn")) return;
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "inline-action-btn outline block bbf-open-btn";
-    btn.textContent = "Buka ramalan traffic & cuaca (TOL 02)";
-    btn.addEventListener("click", (ev) => { ev.stopPropagation(); openPanel(); });
-    node.appendChild(btn);
-  });
-
-  // untuk pengujian / tautan langsung: /?ramalan=buahbatu
-  window.BuahBatuForecast = { open: openPanel, close: closePanel, state };
-  if (new URLSearchParams(location.search).get("ramalan") === "buahbatu") {
-    window.addEventListener("load", () => setTimeout(openPanel, 300));
-  }
+  // untuk pengujian
+  window.BuahBatuForecast = { state };
+  start();
 })();

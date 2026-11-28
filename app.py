@@ -20,7 +20,7 @@ from pathlib import Path
 from datetime import datetime
 import concurrent.futures
 from collections import OrderedDict
-from flask import Flask, render_template, jsonify, request, Response
+from flask import Flask, render_template, jsonify, request, Response, redirect, url_for
 from script_tools.update_cctv_links import sync_catalog_files
 
 app = Flask(__name__)
@@ -323,6 +323,7 @@ def load_roi_annotations() -> dict:
 
 
 BUAHBATU_FORECAST_PATH = Path("outputs/buahbatu_forecast.json")
+BUAHBATU_CAMERA_NAME = "CCTV TERUSAN BUAH BATU-JEMBATAN TOL 02"
 _BUAHBATU_CACHE = {"mtime": None, "data": None}
 _BUAHBATU_LOCK = threading.Lock()
 
@@ -721,8 +722,20 @@ t.start()
 # ==========================================
 # Web Routes
 # ==========================================
+@app.route("/ramalan/buahbatu")
+def buahbatu_page():
+    """Replay forecast page (traffic + weather, two minimaps, live video) for CCTV Terusan Buah Batu - Jembatan Tol 02."""
+    with CATALOG_LOCK:
+        live_url = next(
+            (m["proxyStream"] for m in markers_global if m["name"].upper() == BUAHBATU_CAMERA_NAME), ""
+        )
+    return render_template("buahbatu.html", live_url=live_url)
+
+
 @app.route("/")
 def index():
+    if request.args.get("ramalan") == "buahbatu":      # tautan lama ke panel di peta utama
+        return redirect(url_for("buahbatu_page"))
     with CATALOG_LOCK:
         current_markers = list(markers_global)
         catalog_ver = CATALOG_STATE["version"]

@@ -239,11 +239,11 @@ lightgbm, xgboost, torch CUDA, neuralforecast, optuna, statsmodels. Jalankan ber
 ..\.venv\Scripts\python.exe -m forecast.buat_laporan
 ```
 
-### Panel ramalan di aplikasi peta
+### Halaman ramalan di aplikasi peta
 
-Aplikasi Flask (`../app.py`) menampilkan panel ramalan saat marker **CCTV TERUSAN BUAH BATU-JEMBATAN
-TOL 02** diklik (atau lewat tombol di popup TOL 01/02, yang markernya bertumpuk). Datanya dibuat
-dengan:
+Aplikasi Flask (`../app.py`) menyediakan halaman `/ramalan/buahbatu` untuk **CCTV TERUSAN BUAH
+BATU-JEMBATAN TOL 02**, dibuka lewat tautan di popup TOL 01/02 pada peta utama (markernya
+bertumpuk). Datanya dibuat dengan:
 
 ```powershell
 ..\.venv\Scripts\python.exe -m forecast.ekspor_app
@@ -253,13 +253,14 @@ Hasilnya `../outputs/buahbatu_forecast.json`. Isinya mode replay 20-26 Nov: rama
 +5 sampai +360 menit dari LightGBM tanpa fitur cuaca (out-of-sample), dan cuaca Open-Meteo per 5
 menit di titik CCTV (butuh `forecast.cuaca --sumber openmeteo`). Endpoint:
 `/api/buahbatu/forecast/meta` dan `/api/buahbatu/forecast?asal=<ISO>`. Tampilan ada di
-`../static/buahbatu_forecast.js` dan `.css`; buka langsung dengan `/?ramalan=buahbatu`. Kondisi
+`../templates/buahbatu.html` serta `../static/buahbatu_forecast.js` dan `.css`. Halaman juga
+memutar siaran langsung kamera (`../static/buahbatu_live.js`); ramalannya tetap data replay. Kondisi
 Lancar/Padat/Macet di panel adalah DJ = SMP/jam ÷ kapasitas bawaan PKJI, jadi hanya perkiraan.
 
-Layer peta: lingkaran hujan berjari-jari 1 km (nilai satu titik, bukan peta sebaran) dan heatmap
+Dua minimap: lingkaran hujan berjari-jari 1 km (nilai satu titik, bukan peta sebaran) dan heatmap
 kepadatan selebar badan Jalan Buah Batu dari `../static/buahbatu_jalan.json` (geometri
 © kontributor OpenStreetMap, ODbL). Warna tiap arah memakai ramalan di titik kamera untuk seluruh
-ruas. Rentang warnanya (kend/jam) bisa diatur di panel.
+ruas. Rentang warnanya (kend/jam) bisa diatur di halaman.
 
 ### Mutu video dan galat ramalan
 
